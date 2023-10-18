@@ -1,0 +1,1 @@
+# CoinJoin simulation setup
