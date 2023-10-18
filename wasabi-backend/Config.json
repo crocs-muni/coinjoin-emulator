@@ -1,0 +1,10 @@
+{
+    "Network": "RegTest",
+    "BitcoinRpcConnectionString": "user:password",
+    "MainNetBitcoinP2pEndPoint": "btc-node:8333",
+    "TestNetBitcoinP2pEndPoint": "btc-node:18333",
+    "RegTestBitcoinP2pEndPoint": "btc-node:18444",
+    "MainNetBitcoinCoreRpcEndPoint": "btc-node:8332",
+    "TestNetBitcoinCoreRpcEndPoint": "btc-node:18332",
+    "RegTestBitcoinCoreRpcEndPoint": "btc-node:18443"
+}

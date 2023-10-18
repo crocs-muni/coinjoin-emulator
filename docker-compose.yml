@@ -3,3 +3,15 @@ services:
     build: btc-node
     ports:
       - 127.0.0.1:18443:18443 # RPC port
+
+  wasabi-backend:
+    build: wasabi-backend
+    environment:
+      - WASABI_BIND=http://0.0.0.0:37127
+    depends_on:
+      - btc-node
+
+  wasabi-client:
+    build: wasabi-client
+    depends_on:
+      - wasabi-backend
