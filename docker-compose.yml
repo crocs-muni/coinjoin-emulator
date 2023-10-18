@@ -1,0 +1,5 @@
+services:
+  btc-node:
+    build: btc-node
+    ports:
+      - 127.0.0.1:18443:18443 # RPC port
