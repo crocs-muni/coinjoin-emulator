@@ -13,7 +13,9 @@ RUN dotnet build -c Release
 # FROM mcr.microsoft.com/dotnet/runtime:7.0 # Missing ASP.NET Core
 FROM mcr.microsoft.com/dotnet/aspnet:7.0
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
-COPY --from=0 /wasabi-src/WalletWasabi.Daemon/bin/Release/net7.0 /wasabi
-COPY Config.json /root/.walletwasabi/client/
-WORKDIR /wasabi
+RUN useradd -ms /bin/sh wasabi
+USER wasabi
+WORKDIR /home/wasabi
+COPY --from=0 /wasabi-src/WalletWasabi.Daemon/bin/Release/net7.0 /home/wasabi/
+COPY --chown=wasabi:wasabi Config.json /home/wasabi/.walletwasabi/client/
 CMD ["./WalletWasabi.Daemon"]
