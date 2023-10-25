@@ -5,7 +5,7 @@ RUN apt update && apt install -y patch
 COPY wasabi-src /wasabi-src
 COPY logger.patch /wasabi-src/logger.patch
 WORKDIR /wasabi-src
-RUN patch -p1 < logger.patch
+RUN patch --binary -p1 < logger.patch
 
 WORKDIR /wasabi-src/WalletWasabi.Daemon
 RUN dotnet build -c Release
