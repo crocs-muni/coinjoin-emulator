@@ -13,8 +13,9 @@ def _rpc(request, wallet=None):
     )
     if "error" in response.json():
         raise Exception(response.json()["error"])
-
-    return response.json()["result"]
+    if "result" in response.json():
+        return response.json()["result"]
+    return None
 
 
 def create_wallet(wallet_name):
@@ -80,5 +81,20 @@ def send(wallet_name, invoices):
             "feeTarget": 2,
             "password": "",
         },
+    }
+    return _rpc(request, wallet_name)
+
+
+def start_coinjoin(wallet_name):
+    request = {
+        "method": "startcoinjoin",
+        "params": ["", "True", "True"],
+    }
+    return _rpc(request, wallet_name)
+
+
+def stop_coinjoin(wallet_name):
+    request = {
+        "method": "stopcoinjoin",
     }
     return _rpc(request, wallet_name)
