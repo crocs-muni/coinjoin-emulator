@@ -1,4 +1,7 @@
 FROM ruimarinho/bitcoin-core:23-alpine
 COPY bitcoin.conf /home/bitcoin/.bitcoin/bitcoin.conf
-RUN apk add curl
-CMD ["bitcoind", "-conf=/home/bitcoin/.bitcoin/bitcoin.conf", "-datadir=/home/bitcoin/.bitcoin", "-printtoconsole"]
+COPY mine.sh /home/bitcoin/mine.sh
+COPY run.sh /home/bitcoin/run.sh
+RUN apk add curl jq
+WORKDIR /home/bitcoin
+CMD ["./run.sh"]
