@@ -1,5 +1,34 @@
 ﻿{
-  "StandardInputRegistrationTimeout": "0d 0h 10m 0s",
-  "MaxInputCountByRound": 10,
-  "MinInputCountByRoundMultiplier": 0.5
+  "DoSSeverity": "0.10",
+  "DoSMinTimeForFailedToVerify": "31d 0h 0m 0s",
+  "DoSMinTimeForCheating": "1d 0h 0m 0s",
+  "DoSPenaltyFactorForDisruptingConfirmation": 0.2,
+  "DoSPenaltyFactorForDisruptingSigning": 1.0,
+  "DoSPenaltyFactorForDisruptingByDoubleSpending": 3.0,
+  "DoSMinTimeInPrison": "0d 0h 20m 0s",
+  "MinRegistrableAmount": "0.00005",
+  "MaxRegistrableAmount": "43000.00",
+  "AllowNotedInputRegistration": true,
+  "StandardInputRegistrationTimeout": "0d 0h 1m 40s",
+  "BlameInputRegistrationTimeout": "0d 0h 3m 0s",
+  "ConnectionConfirmationTimeout": "0d 0h 0m 30s",
+  "OutputRegistrationTimeout": "0d 0h 0m 30s",
+  "TransactionSigningTimeout": "0d 0h 0m 30s",
+  "FailFastOutputRegistrationTimeout": "0d 0h 3m 0s",
+  "FailFastTransactionSigningTimeout": "0d 0h 0m 30s",
+  "RoundExpiryTimeout": "0d 0h 5m 0s",
+  "MaxInputCountByRound": 8,
+  "MinInputCountByRoundMultiplier": 0.5,
+  "CoordinationFeeRate": {
+    "Rate": 0.003,
+    "PlebsDontPayThreshold": 1000000
+  },
+  "MaxSuggestedAmountBase": "0.10",
+  "RiskFlags": "",
+  "ReleaseFromWhitelistAfter": "31d 0h 0m 0s",
+  "RoundParallelization": 1,
+  "AllowP2wpkhInputs": true,
+  "AllowP2trInputs": true,
+  "AllowP2wpkhOutputs": true,
+  "AllowP2trOutputs": true
 }
