@@ -1,0 +1,5 @@
+﻿{
+  "StandardInputRegistrationTimeout": "0d 0h 10m 0s",
+  "MaxInputCountByRound": 10,
+  "MinInputCountByRoundMultiplier": 0.5
+}

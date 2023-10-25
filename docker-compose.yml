@@ -28,7 +28,7 @@ services:
     environment:
       - WASABI_BIND=http://0.0.0.0:37127
     volumes:
-      - ./mounts/backend/WabiSabiConfig.json:/root/.walletwasabi/backend/WabiSabiConfig.json
+      - ./mounts/backend/:/home/wasabi/.walletwasabi/backend/
     depends_on:
       btc-node:
         condition: service_healthy
@@ -50,8 +50,6 @@ services:
     build: wasabi-client
     ports:
       - 127.0.0.1:37128:37128
-    volumes:
-      - ./mounts/client/wallets/:/home/wasabi/.walletwasabi/client/Wallets/RegTest/
     depends_on:
       wasabi-backend:
         condition: service_healthy

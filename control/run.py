@@ -50,6 +50,8 @@ if __name__ == "__main__":
     fund_wallets(invoices)
     print("Funding finished")
 
+    sleep(10)
+
     print("Starting coinjoins")
     for wallet in wallets:
         wasabi_client.start_coinjoin(wallet)
