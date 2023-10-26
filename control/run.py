@@ -1,5 +1,6 @@
 from btc_node import BtcNode
 from wasabi_client import WasabiClient
+from wasabi_backend import WasabiBackend
 from time import sleep
 import random
 import docker
@@ -13,6 +14,7 @@ BTC = 100_000_000
 docker_client = None
 docker_network = None
 node = None
+coordinator = None
 distributor = None
 clients = []
 
@@ -68,7 +70,9 @@ def start_infrastructure():
         ],
         network=docker_network.id,
     )
-    sleep(10)  # TODO perform health check instead
+    global coordinator
+    coordinator = WasabiBackend("wasabi-backend", 37127)
+    coordinator.wait_ready()
     print("- started wasabi-backend")
 
     docker_client.containers.run(
@@ -181,7 +185,7 @@ def stop_infrastructure():
     except docker.errors.NotFound:
         pass
     try:
-        docker_client.containers.get("wasabi-backend").stop()
+        docker_client.containers.get(coordinator.name).stop()
         print("- stopped wasabi-backend")
     except docker.errors.NotFound:
         pass
