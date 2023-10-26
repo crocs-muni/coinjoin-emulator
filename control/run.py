@@ -6,6 +6,7 @@ import docker
 import os
 import shutil
 import datetime
+import json
 
 BTC = 100_000_000
 
@@ -27,15 +28,9 @@ def build_images():
 
 def start_infrastructure():
     print("Starting infrastructure")
-    old_networks = docker_client.networks.list("coinjoin")
-    if old_networks:
-        for old_network in old_networks:
-            print(f"- removing old CoinJoin network {old_network.id[:12]!r}")
-            old_network.remove()
-
     global docker_network
     docker_network = docker_client.networks.create("coinjoin", driver="bridge")
-    print(f"- created new CoinJoin network {docker_network.id[:12]!r}")
+    print(f"- created new coinjoin network")
 
     docker_client.containers.run(
         "btc-node",
@@ -147,6 +142,59 @@ def start_coinjoins():
         print(f"- started {client.name}")
 
 
+def store_logs():
+    print("Storing logs")
+    time = datetime.datetime.now().isoformat(timespec="seconds")
+    if not os.path.exists("../logs/"):
+        os.mkdir("../logs/")
+    try:
+        shutil.copytree("../mounts/backend/", f"../logs/{time}/wasabi-backend/")
+        print("- stored backend logs")
+    except FileNotFoundError:
+        print("- could not find backend logs")
+
+    for client in clients:
+        os.mkdir(f"../logs/{time}/{client.name}/")
+        with open(f"../logs/{time}/{client.name}/coins.json", "w") as f:
+            json.dump(client.list_coins(), f, indent=2)
+            print(f"- stored {client.name} coins")
+
+
+def stop_clients():
+    print("Stopping clients")
+    for client in clients:
+        try:
+            docker_client.containers.get(client.name).stop()
+            print(f"- stopped {client.name}")
+        except docker.errors.NotFound:
+            pass
+
+
+def stop_infrastructure():
+    print("Stopping infrastructure")
+    try:
+        docker_client.containers.get("btc-node").stop()
+        print("- stopped btc-node")
+    except docker.errors.NotFound:
+        pass
+    try:
+        docker_client.containers.get("wasabi-backend").stop()
+        print("- stopped wasabi-backend")
+    except docker.errors.NotFound:
+        pass
+    try:
+        docker_client.containers.get(distributor.name).stop()
+        print("- stopped wasabi-clientdistributor")
+    except docker.errors.NotFound:
+        pass
+
+    old_networks = docker_client.networks.list("coinjoin")
+    if old_networks:
+        for old_network in old_networks:
+            old_network.remove()
+            print(f"- removed coinjoin network")
+
+
 def main():
     build_images()
     start_infrastructure()
@@ -172,29 +220,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("KeyboardInterrupt received")
     finally:
-        print("Storing logs")
-        if not os.path.exists("../logs/"):
-            os.mkdir("../logs/")
-        shutil.copytree(
-            "../mounts/backend/",
-            f"../logs/{datetime.datetime.now().isoformat(timespec='seconds')}/",
-        )
-
-        print("Stopping infrastructure")
-        try:
-            docker_client.containers.get("btc-node").stop()
-        except docker.errors.NotFound:
-            pass
-        try:
-            docker_client.containers.get("wasabi-backend").stop()
-        except docker.errors.NotFound:
-            pass
-        try:
-            docker_client.containers.get(distributor.name).stop()
-        except docker.errors.NotFound:
-            pass
-        for client in clients:
-            try:
-                docker_client.containers.get(client.name).stop()
-            except docker.errors.NotFound:
-                pass
+        store_logs()
+        stop_clients()
+        stop_infrastructure()

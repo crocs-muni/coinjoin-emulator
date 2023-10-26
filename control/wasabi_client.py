@@ -95,3 +95,9 @@ class WasabiClient:
             "method": "stopcoinjoin",
         }
         return self._rpc(request, "wallet")
+
+    def list_coins(self):
+        request = {
+            "method": "listcoins",
+        }
+        return self._rpc(request)
