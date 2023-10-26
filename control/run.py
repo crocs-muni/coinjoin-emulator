@@ -1,5 +1,5 @@
 import btc_node
-import wasabi_client
+from wasabi_client import WasabiClient
 from time import sleep
 import random
 import docker
@@ -9,38 +9,13 @@ import datetime
 
 BTC = 100_000_000
 
-
-def fund_distributor(btc_amount):
-    wasabi_client.create_wallet("distributor")
-    wasabi_client.wait_wallet("distributor")
-    btc_node.fund_address(wasabi_client.get_new_address("distributor"), btc_amount)
-    btc_node.mine_block()
-    while wasabi_client.get_balance("distributor") < btc_amount * BTC:
-        sleep(0.1)
+docker_client = None
+docker_network = None
+distributor = None
+clients = []
 
 
-def fund_wallets(invoices):
-    for wallet, _ in invoices:
-        print(f"- creating wallet {wallet}")
-        wasabi_client.create_wallet(wallet)
-        wasabi_client.wait_wallet(wallet)
-
-    addressed_invoices = [
-        (wasabi_client.get_new_address(wallet), amount) for wallet, amount in invoices
-    ]
-
-    print("- creating wallet-funding transaction")
-    wasabi_client.send("distributor", addressed_invoices)
-    btc_node.mine_block()
-
-    for wallet, target_value in invoices:
-        while wasabi_client.get_balance(wallet) < target_value:
-            sleep(0.1)
-
-
-def main():
-    docker_client = docker.from_env()
-
+def build_images():
     print("Building Docker images")
     docker_client.images.build(path="../btc-node", tag="btc-node", rm=True)
     print("- btc-node image built")
@@ -49,18 +24,20 @@ def main():
     docker_client.images.build(path="../wasabi-client", tag="wasabi-client", rm=True)
     print("- wasabi-client image built")
 
-    print("Setting up CoinJoin network")
+
+def start_infrastructure():
+    print("Starting infrastructure")
     old_networks = docker_client.networks.list("coinjoin")
     if old_networks:
         for old_network in old_networks:
             print(f"- removing old CoinJoin network {old_network.id[:12]!r}")
             old_network.remove()
 
+    global docker_network
     docker_network = docker_client.networks.create("coinjoin", driver="bridge")
     print(f"- created new CoinJoin network {docker_network.id[:12]!r}")
 
-    print("Starting infrastructure")
-    btc_node_container = docker_client.containers.run(
+    docker_client.containers.run(
         "btc-node",
         detach=True,
         auto_remove=True,
@@ -80,7 +57,7 @@ def main():
         "../wasabi-backend/WabiSabiConfig.json",
         "../mounts/backend/WabiSabiConfig.json",
     )
-    wasabi_backend_container = docker_client.containers.run(
+    docker_client.containers.run(
         "wasabi-backend",
         detach=True,
         auto_remove=True,
@@ -96,39 +73,91 @@ def main():
     sleep(10)  # TODO perform health check instead
     print("- started wasabi-backend")
 
-    wasabi_client_container = docker_client.containers.run(
+    docker_client.containers.run(
         "wasabi-client",
         detach=True,
         auto_remove=True,
-        name="wasabi-client",
-        hostname="wasabi-client",
+        name=f"wasabi-client-distributor",
+        hostname=f"wasabi-client-distributor",
         ports={"37128": "37128"},
         network=docker_network.id,
     )
-    sleep(10)  # TODO perform health check instead
-    print("- started wasabi-client")
-
-    wallets = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-    print("Funding distributor")
-    fund_distributor(30)
-    print("- funded")
-    print("Funding wallets")
-    invoices = list(
-        zip(
-            wallets,
-            [int(random.random() * BTC * 0.001 + BTC) for _ in range(26)],
-        )
-    )
-    fund_wallets(invoices)
-    print("- funded")
     sleep(10)
+    global distributor
+    distributor = WasabiClient("wasabi-client-distributor", 37128)
+    distributor.create_wallet()
+    distributor.wait_wallet()
+    print("- started distributor")
 
+
+def fund_distributor(btc_amount):
+    print("Funding distributor")
+    btc_node.fund_address(distributor.get_new_address(), btc_amount)
+    btc_node.mine_block()
+    while (balance := distributor.get_balance()) < btc_amount * BTC:
+        sleep(0.1)
+    print(f"- funded (current balance {balance / BTC:.8f} BTC)")
+
+
+def start_clients(num_clients):
+    print("Starting clients")
+    new_idxs = []
+    for _ in range(num_clients):
+        idx = len(clients)
+        docker_client.containers.run(
+            "wasabi-client",
+            detach=True,
+            auto_remove=True,
+            name=f"wasabi-client-{idx}",
+            hostname=f"wasabi-client-{idx}",
+            ports={"37128": 37129 + idx},
+            network=docker_network.id,
+        )
+        client = WasabiClient(f"wasabi-client-{idx}", 37129 + idx)
+        clients.append(client)
+        new_idxs.append(idx)
+        print(f"- started {client.name}")
+    sleep(10)  # TODO perform health check instead
+    for idx in new_idxs:
+        client = clients[idx]
+        client.create_wallet()
+        client.wait_wallet()
+        print(f"- created wallet {client.name}")
+    return new_idxs
+
+
+def fund_clients(invoices):
+    print("Funding clients")
+    addressed_invoices = [
+        (client.get_new_address(), amount) for client, amount in invoices
+    ]
+    distributor.send(addressed_invoices)
+    print("- created wallet-funding transaction")
+    btc_node.mine_block()
+    for client, target_value in invoices:
+        while client.get_balance() < target_value:
+            sleep(0.1)
+    print("- funded")
+
+
+def start_coinjoins():
     print("Starting coinjoins")
-    for wallet in wallets:
-        wasabi_client.start_coinjoin(wallet)
-    print("- started")
+    for client in clients:
+        client.start_coinjoin()
+        print(f"- started {client.name}")
 
+
+def main():
+    build_images()
+    start_infrastructure()
+    fund_distributor(30)
+    idxs = start_clients(8)
+    fund_clients(
+        [(clients[idx], int(random.random() * BTC * 0.001 + BTC)) for idx in idxs]
+    )
+    start_coinjoins()
+
+    print("Running")
     while True:
         with open("../mounts/backend/WabiSabi/CoinJoinIdStore.txt") as f:
             num_lines = sum(1 for _ in f)
@@ -137,6 +166,7 @@ def main():
 
 
 if __name__ == "__main__":
+    docker_client = docker.from_env()
     try:
         main()
     except KeyboardInterrupt:
@@ -151,7 +181,6 @@ if __name__ == "__main__":
         )
 
         print("Stopping infrastructure")
-        docker_client = docker.from_env()
         try:
             docker_client.containers.get("btc-node").stop()
         except docker.errors.NotFound:
@@ -161,6 +190,11 @@ if __name__ == "__main__":
         except docker.errors.NotFound:
             pass
         try:
-            docker_client.containers.get("wasabi-client").stop()
+            docker_client.containers.get(distributor.name).stop()
         except docker.errors.NotFound:
             pass
+        for client in clients:
+            try:
+                docker_client.containers.get(client.name).stop()
+            except docker.errors.NotFound:
+                pass

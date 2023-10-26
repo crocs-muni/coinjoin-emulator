@@ -2,99 +2,96 @@ import json
 import requests
 from time import sleep
 
-URL = "http://localhost:37128"
+WALLET_NAME = "wallet"
 
 
-def _rpc(request, wallet=None):
-    request["jsonrpc"] = "2.0"
-    request["id"] = "1"
-    response = requests.post(
-        URL + ("/" + wallet if wallet else ""), data=json.dumps(request)
-    )
-    if "error" in response.json():
-        raise Exception(response.json()["error"])
-    if "result" in response.json():
-        return response.json()["result"]
-    return None
+class WasabiClient:
+    def __init__(self, name="wasabi-client", port=37128):
+        self.name = name
+        self.port = port
 
-
-def create_wallet(wallet_name):
-    request = {
-        "method": "createwallet",
-        "params": [wallet_name, ""],
-    }
-    try:
-        return _rpc(request)
-    except:
+    def _rpc(self, request):
+        request["jsonrpc"] = "2.0"
+        request["id"] = "1"
+        response = requests.post(
+            f"http://localhost:{self.port}/{WALLET_NAME}",
+            data=json.dumps(request),
+        )
+        if "error" in response.json():
+            raise Exception(response.json()["error"])
+        if "result" in response.json():
+            return response.json()["result"]
         return None
 
-
-def get_new_address(wallet_name):
-    request = {
-        "method": "getnewaddress",
-        "params": ["label"],
-    }
-    return _rpc(request, wallet_name)["address"]
-
-
-def get_balance(wallet_name):
-    request = {
-        "method": "getwalletinfo",
-    }
-    return _rpc(request, wallet_name)["balance"]
-
-
-def get_coins(wallet_name):
-    request = {
-        "method": "listcoins",
-    }
-    return _rpc(request, wallet_name)
-
-
-def wait_wallet(wallet_name):
-    while True:
-        sleep(0.1)
+    def create_wallet(self):
+        request = {
+            "method": "createwallet",
+            "params": [WALLET_NAME, ""],
+        }
         try:
-            get_balance(wallet_name)
-            break
+            return self._rpc(request)
         except:
-            pass
+            return None
 
+    def get_new_address(self):
+        request = {
+            "method": "getnewaddress",
+            "params": ["label"],
+        }
+        return self._rpc(request)["address"]
 
-def _list_unspent_coins(wallet_name):
-    request = {
-        "method": "listunspentcoins",
-    }
-    return _rpc(request, wallet_name)
+    def get_balance(self):
+        request = {
+            "method": "getwalletinfo",
+        }
+        return self._rpc(request)["balance"]
 
+    def get_coins(self):
+        request = {
+            "method": "listcoins",
+        }
+        return self._rpc(request)
 
-def send(wallet_name, invoices):
-    coins = _list_unspent_coins(wallet_name)
-    coins = map(lambda x: {"transactionid": x["txid"], "index": x["index"]}, coins)
-    payments = map(lambda x: {"sendto": x[0], "amount": x[1]}, invoices)
+    def wait_wallet(self):
+        while True:
+            sleep(0.1)
+            try:
+                self.get_balance()
+                break
+            except:
+                pass
 
-    request = {
-        "method": "send",
-        "params": {
-            "payments": list(payments),
-            "coins": list(coins),
-            "feeTarget": 2,
-            "password": "",
-        },
-    }
-    return _rpc(request, wallet_name)
+    def _list_unspent_coins(self):
+        request = {
+            "method": "listunspentcoins",
+        }
+        return self._rpc(request)
 
+    def send(self, invoices):
+        coins = self._list_unspent_coins()
+        coins = map(lambda x: {"transactionid": x["txid"], "index": x["index"]}, coins)
+        payments = map(lambda x: {"sendto": x[0], "amount": x[1]}, invoices)
 
-def start_coinjoin(wallet_name):
-    request = {
-        "method": "startcoinjoin",
-        "params": ["", "True", "True"],
-    }
-    return _rpc(request, wallet_name)
+        request = {
+            "method": "send",
+            "params": {
+                "payments": list(payments),
+                "coins": list(coins),
+                "feeTarget": 2,
+                "password": "",
+            },
+        }
+        return self._rpc(request)
 
+    def start_coinjoin(self):
+        request = {
+            "method": "startcoinjoin",
+            "params": ["", "True", "True"],
+        }
+        return self._rpc(request)
 
-def stop_coinjoin(wallet_name):
-    request = {
-        "method": "stopcoinjoin",
-    }
-    return _rpc(request, wallet_name)
+    def stop_coinjoin(self):
+        request = {
+            "method": "stopcoinjoin",
+        }
+        return self._rpc(request, "wallet")
