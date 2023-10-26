@@ -10,11 +10,11 @@ class WasabiClient:
         self.name = name
         self.port = port
 
-    def _rpc(self, request):
+    def _rpc(self, request, wallet=True):
         request["jsonrpc"] = "2.0"
         request["id"] = "1"
         response = requests.post(
-            f"http://localhost:{self.port}/{WALLET_NAME}",
+            f"http://localhost:{self.port}/{WALLET_NAME if wallet else ''}",
             data=json.dumps(request),
         )
         if "error" in response.json():
@@ -23,15 +23,18 @@ class WasabiClient:
             return response.json()["result"]
         return None
 
-    def create_wallet(self):
+    def get_status(self):
+        request = {
+            "method": "getstatus",
+        }
+        return self._rpc(request, wallet=False)
+
+    def _create_wallet(self):
         request = {
             "method": "createwallet",
             "params": [WALLET_NAME, ""],
         }
-        try:
-            return self._rpc(request)
-        except:
-            return None
+        return self._rpc(request)
 
     def get_new_address(self):
         request = {
@@ -54,12 +57,17 @@ class WasabiClient:
 
     def wait_wallet(self):
         while True:
-            sleep(0.1)
+            try:
+                self._create_wallet()
+            except:
+                pass
+
             try:
                 self.get_balance()
                 break
             except:
                 pass
+            sleep(0.1)
 
     def _list_unspent_coins(self):
         request = {
@@ -101,3 +109,12 @@ class WasabiClient:
             "method": "listcoins",
         }
         return self._rpc(request)
+
+    def wait_ready(self):
+        while True:
+            try:
+                self.get_status()
+                break
+            except:
+                pass
+            sleep(0.1)

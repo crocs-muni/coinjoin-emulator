@@ -84,10 +84,8 @@ def start_infrastructure():
         ports={"37128": "37128"},
         network=docker_network.id,
     )
-    sleep(10)
     global distributor
     distributor = WasabiClient("wasabi-client-distributor", 37128)
-    distributor.create_wallet()
     distributor.wait_wallet()
     print("- started distributor")
 
@@ -118,13 +116,11 @@ def start_clients(num_clients):
         client = WasabiClient(f"wasabi-client-{idx}", 37129 + idx)
         clients.append(client)
         new_idxs.append(idx)
-        print(f"- started {client.name}")
-    sleep(10)  # TODO perform health check instead
+
     for idx in new_idxs:
         client = clients[idx]
-        client.create_wallet()
         client.wait_wallet()
-        print(f"- created wallet {client.name}")
+        print(f"- started {client.name}")
     return new_idxs
 
 
