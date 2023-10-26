@@ -1,50 +1,64 @@
 import requests
 import json
+from time import sleep
 
 URL = "http://localhost:18443"
 WALLET = "wallet"
 
 
-def _rpc(request, wallet=None):
-    request["jsonrpc"] = "2.0"
-    request["id"] = "1"
-    response = requests.post(
-        URL + ("/wallet/" + wallet if wallet else ""),
-        data=json.dumps(request),
-        auth=("user", "password"),
-    )
-    return response.json()["result"]
+class BtcNode:
+    def __init__(self, name="btc-node"):
+        self.name = name
 
+    def _rpc(self, request, wallet=None):
+        request["jsonrpc"] = "2.0"
+        request["id"] = "1"
+        response = requests.post(
+            URL + ("/wallet/" + WALLET if wallet else ""),
+            data=json.dumps(request),
+            auth=("user", "password"),
+        )
+        if response.json()["error"] is not None:
+            raise Exception(response.json()["error"])
+        return response.json()["result"]
 
-def get_block_count():
-    request = {
-        "method": "getblockcount",
-        "params": [],
-    }
-    return _rpc(request)
+    def get_block_count(self):
+        request = {
+            "method": "getblockcount",
+            "params": [],
+        }
+        return self._rpc(request)
 
+    def mine_block(self, count=1):
+        initial_block_count = self.get_block_count()
 
-def mine_block(count=1):
-    initial_block_count = get_block_count()
+        request = {
+            "method": "getnewaddress",
+            "params": [],
+        }
+        address = self._rpc(request, WALLET)
 
-    request = {
-        "method": "getnewaddress",
-        "params": [],
-    }
-    address = _rpc(request, WALLET)
+        request = {
+            "method": "generatetoaddress",
+            "params": [count, address],
+        }
+        self._rpc(request)
 
-    request = {
-        "method": "generatetoaddress",
-        "params": [count, address],
-    }
-    _rpc(request)
+        return self.get_block_count() - initial_block_count == count
 
-    return get_block_count() - initial_block_count == count
+    def fund_address(self, address, amount):
+        request = {
+            "method": "sendtoaddress",
+            "params": [address, amount],
+        }
+        self._rpc(request, WALLET)
 
-
-def fund_address(address, amount):
-    request = {
-        "method": "sendtoaddress",
-        "params": [address, amount],
-    }
-    _rpc(request, WALLET)
+    def wait_ready(self):
+        while True:
+            try:
+                block_count = self.get_block_count()
+                if block_count > 100:
+                    break
+            except Exception:
+                pass
+            sleep(0.1)

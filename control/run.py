@@ -1,4 +1,4 @@
-import btc_node
+from btc_node import BtcNode
 from wasabi_client import WasabiClient
 from time import sleep
 import random
@@ -12,6 +12,7 @@ BTC = 100_000_000
 
 docker_client = None
 docker_network = None
+node = None
 distributor = None
 clients = []
 
@@ -41,7 +42,9 @@ def start_infrastructure():
         ports={"18443": "18443"},
         network=docker_network.id,
     )
-    sleep(10)  # TODO perform health check instead
+    global node
+    node = BtcNode("btc-node")
+    node.wait_ready()
     print("- started btc-node")
 
     if os.path.exists("../mounts/backend/"):
@@ -87,8 +90,8 @@ def start_infrastructure():
 
 def fund_distributor(btc_amount):
     print("Funding distributor")
-    btc_node.fund_address(distributor.get_new_address(), btc_amount)
-    btc_node.mine_block()
+    node.fund_address(distributor.get_new_address(), btc_amount)
+    node.mine_block()
     while (balance := distributor.get_balance()) < btc_amount * BTC:
         sleep(0.1)
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
@@ -128,7 +131,7 @@ def fund_clients(invoices):
     ]
     distributor.send(addressed_invoices)
     print("- created wallet-funding transaction")
-    btc_node.mine_block()
+    node.mine_block()
     for client, target_value in invoices:
         while client.get_balance() < target_value:
             sleep(0.1)
@@ -173,7 +176,7 @@ def stop_clients():
 def stop_infrastructure():
     print("Stopping infrastructure")
     try:
-        docker_client.containers.get("btc-node").stop()
+        docker_client.containers.get(node.name).stop()
         print("- stopped btc-node")
     except docker.errors.NotFound:
         pass
