@@ -126,14 +126,15 @@ def start_clients(num_clients):
 
 def fund_clients(invoices):
     print("Funding clients")
-    addressed_invoices = [
-        (client.get_new_address(), amount) for client, amount in invoices
-    ]
+    addressed_invoices = []
+    for client, values in invoices:
+        for value in values:
+            addressed_invoices.append((client.get_new_address(), value))
     distributor.send(addressed_invoices)
     print("- created wallet-funding transaction")
     node.mine_block()
-    for client, target_value in invoices:
-        while client.get_balance() < target_value:
+    for client, values in invoices:
+        while client.get_balance() < sum(values):
             sleep(0.1)
     print("- funded")
 
@@ -202,10 +203,20 @@ def main():
     build_images()
     start_infrastructure()
     fund_distributor(30)
-    idxs = start_clients(8)
-    fund_clients(
-        [(clients[idx], int(random.random() * BTC * 0.001 + BTC)) for idx in idxs]
-    )
+    start_clients(10)
+    invoices = [
+        (clients[0], [200000, 50000]),
+        (clients[1], [3000000]),
+        (clients[2], [1000000, 500000]),
+        (clients[3], [1000000, 500000]),
+        (clients[4], [1000000, 500000]),
+        (clients[5], [3000000, 15000]),
+        (clients[6], [1000000, 500000]),
+        (clients[7], [1000000, 500000]),
+        (clients[8], [3000000, 600000]),
+        (clients[9], [1000000, 500000]),
+    ]
+    fund_clients(invoices)
     start_coinjoins()
 
     print("Running")
