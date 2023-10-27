@@ -1,6 +1,6 @@
-from btc_node import BtcNode
-from wasabi_client import WasabiClient
-from wasabi_backend import WasabiBackend
+from manager.btc_node import BtcNode
+from manager.wasabi_client import WasabiClient
+from manager.wasabi_backend import WasabiBackend
 from time import sleep
 import docker
 import os
@@ -21,19 +21,19 @@ clients = []
 
 def build_images():
     print("Building Docker images")
-    docker_client.images.build(path="../btc-node", tag="btc-node", rm=True)
+    docker_client.images.build(path="./btc-node", tag="btc-node", rm=True)
     print("- btc-node image built")
-    docker_client.images.build(path="../wasabi-backend", tag="wasabi-backend", rm=True)
+    docker_client.images.build(path="./wasabi-backend", tag="wasabi-backend", rm=True)
     print("- wasabi-backend image built")
-    docker_client.images.build(path="../wasabi-client", tag="wasabi-client", rm=True)
+    docker_client.images.build(path="./wasabi-client", tag="wasabi-client", rm=True)
     print("- wasabi-client image built")
 
 
 def start_infrastructure():
     print("Starting infrastructure")
-    if os.path.exists("../mounts/"):
-        shutil.rmtree("../mounts/")
-    os.mkdir("../mounts/")
+    if os.path.exists("./mounts/"):
+        shutil.rmtree("./mounts/")
+    os.mkdir("./mounts/")
     print("- created mounts/ directory")
     global docker_network
     docker_network = docker_client.networks.create("coinjoin", driver="bridge")
@@ -53,11 +53,11 @@ def start_infrastructure():
     node.wait_ready()
     print("- started btc-node")
 
-    os.mkdir("../mounts/backend/")
-    shutil.copyfile("../wasabi-backend/Config.json", "../mounts/backend/Config.json")
+    os.mkdir("./mounts/backend/")
+    shutil.copyfile("./wasabi-backend/Config.json", "./mounts/backend/Config.json")
     shutil.copyfile(
-        "../wasabi-backend/WabiSabiConfig.json",
-        "../mounts/backend/WabiSabiConfig.json",
+        "./wasabi-backend/WabiSabiConfig.json",
+        "./mounts/backend/WabiSabiConfig.json",
     )
     docker_client.containers.run(
         "wasabi-backend",
@@ -68,7 +68,7 @@ def start_infrastructure():
         ports={"37127": "37127"},
         environment=["WASABI_BIND=http://0.0.0.0:37127"],
         volumes=[
-            f"{os.path.abspath('../mounts/backend/')}:/home/wasabi/.walletwasabi/backend/"
+            f"{os.path.abspath('./mounts/backend/')}:/home/wasabi/.walletwasabi/backend/"
         ],
         network=docker_network.id,
     )
@@ -151,17 +151,17 @@ def start_coinjoins():
 def store_logs():
     print("Storing logs")
     time = datetime.datetime.now().isoformat(timespec="seconds")
-    if not os.path.exists("../logs/"):
-        os.mkdir("../logs/")
+    if not os.path.exists("./logs/"):
+        os.mkdir("./logs/")
     try:
-        shutil.copytree("../mounts/backend/", f"../logs/{time}/wasabi-backend/")
+        shutil.copytree("./mounts/backend/", f"./logs/{time}/wasabi-backend/")
         print("- stored backend logs")
     except FileNotFoundError:
         print("- could not find backend logs")
 
     for client in clients:
-        os.mkdir(f"../logs/{time}/{client.name}/")
-        with open(f"../logs/{time}/{client.name}/coins.json", "w") as f:
+        os.mkdir(f"./logs/{time}/{client.name}/")
+        with open(f"./logs/{time}/{client.name}/coins.json", "w") as f:
             json.dump(client.list_coins(), f, indent=2)
             print(f"- stored {client.name} coins")
 
@@ -200,8 +200,8 @@ def stop_infrastructure():
             old_network.remove()
             print(f"- removed coinjoin network")
 
-    if os.path.exists("../mounts/"):
-        shutil.rmtree("../mounts/")
+    if os.path.exists("./mounts/"):
+        shutil.rmtree("./mounts/")
         print("- removed mounts/")
 
 
@@ -227,14 +227,14 @@ def main():
 
     print("Running")
     while True:
-        with open("../mounts/backend/WabiSabi/CoinJoinIdStore.txt") as f:
+        with open("./mounts/backend/WabiSabi/CoinJoinIdStore.txt") as f:
             num_lines = sum(1 for _ in f)
         print(f"- number of coinjoins: {num_lines:<10}", end="\r")
         sleep(1)
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Run coinjoin simulation setup")
     parser.add_argument(
         "--cleanup-only", action="store_true", help="remove old logs and containers"
     )
@@ -257,8 +257,8 @@ if __name__ == "__main__":
             for network in networks:
                 network.remove()
                 print(network.name, "network removed")
-        if os.path.exists("../mounts/"):
-            shutil.rmtree("../mounts/")
+        if os.path.exists("./mounts/"):
+            shutil.rmtree("./mounts/")
         print("mounts/ directory removed")
         exit(0)
 
