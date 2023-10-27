@@ -2,12 +2,12 @@ from btc_node import BtcNode
 from wasabi_client import WasabiClient
 from wasabi_backend import WasabiBackend
 from time import sleep
-import random
 import docker
 import os
 import shutil
 import datetime
 import json
+import argparse
 
 BTC = 100_000_000
 
@@ -31,9 +31,13 @@ def build_images():
 
 def start_infrastructure():
     print("Starting infrastructure")
+    if os.path.exists("../mounts/"):
+        shutil.rmtree("../mounts/")
+    os.mkdir("../mounts/")
+    print("- created mounts/ directory")
     global docker_network
     docker_network = docker_client.networks.create("coinjoin", driver="bridge")
-    print(f"- created new coinjoin network")
+    print(f"- created coinjoin network")
 
     docker_client.containers.run(
         "btc-node",
@@ -49,8 +53,6 @@ def start_infrastructure():
     node.wait_ready()
     print("- started btc-node")
 
-    if os.path.exists("../mounts/backend/"):
-        shutil.rmtree("../mounts/backend/")
     os.mkdir("../mounts/backend/")
     shutil.copyfile("../wasabi-backend/Config.json", "../mounts/backend/Config.json")
     shutil.copyfile(
@@ -188,7 +190,7 @@ def stop_infrastructure():
         pass
     try:
         docker_client.containers.get(distributor.name).stop()
-        print("- stopped wasabi-clientdistributor")
+        print("- stopped wasabi-client-distributor")
     except docker.errors.NotFound:
         pass
 
@@ -197,6 +199,10 @@ def stop_infrastructure():
         for old_network in old_networks:
             old_network.remove()
             print(f"- removed coinjoin network")
+
+    if os.path.exists("../mounts/"):
+        shutil.rmtree("../mounts/")
+        print("- removed mounts/")
 
 
 def main():
@@ -228,6 +234,34 @@ def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--cleanup-only", action="store_true", help="remove old logs and containers"
+    )
+
+    args = parser.parse_args()
+
+    if args.cleanup_only:
+        docker_client = docker.from_env()
+        containers = docker_client.containers.list()
+        for container in containers:
+            if containers[0].attrs["Config"]["Image"] in (
+                "btc-node",
+                "wasabi-backend",
+                "wasabi-client",
+            ):
+                container.stop()
+                print(container.name, "container stopped")
+        networks = docker_client.networks.list("coinjoin")
+        if networks:
+            for network in networks:
+                network.remove()
+                print(network.name, "network removed")
+        if os.path.exists("../mounts/"):
+            shutil.rmtree("../mounts/")
+        print("mounts/ directory removed")
+        exit(0)
+
     docker_client = docker.from_env()
     try:
         main()
