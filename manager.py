@@ -95,7 +95,6 @@ def start_infrastructure():
 def fund_distributor(btc_amount):
     print("Funding distributor")
     node.fund_address(distributor.get_new_address(), btc_amount)
-    node.mine_block()
     while (balance := distributor.get_balance()) < btc_amount * BTC:
         sleep(0.1)
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
@@ -134,7 +133,6 @@ def fund_clients(invoices):
             addressed_invoices.append((client.get_new_address(), value))
     distributor.send(addressed_invoices)
     print("- created wallet-funding transaction")
-    node.mine_block()
     for client, values in invoices:
         while client.get_balance() < sum(values):
             sleep(0.1)
