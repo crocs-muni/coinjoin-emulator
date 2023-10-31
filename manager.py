@@ -148,9 +148,11 @@ def start_coinjoins():
 
 def store_logs():
     print("Storing logs")
-    time = datetime.datetime.now().isoformat(timespec="seconds")
+    time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
     if not os.path.exists("./logs/"):
         os.mkdir("./logs/")
+
+    os.mkdir(f"./logs/{time}/")
     try:
         shutil.copytree("./mounts/backend/", f"./logs/{time}/wasabi-backend/")
         print("- stored backend logs")
