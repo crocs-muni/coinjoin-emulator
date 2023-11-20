@@ -8,6 +8,8 @@ import shutil
 import datetime
 import json
 import argparse
+from io import BytesIO
+import tarfile
 
 BTC = 100_000_000
 
@@ -164,6 +166,21 @@ def store_logs():
         with open(f"./logs/{time}/{client.name}/coins.json", "w") as f:
             json.dump(client.list_coins(), f, indent=2)
             print(f"- stored {client.name} coins")
+        try:
+            stream, _ = docker_client.containers.get(client.name).get_archive(
+                "/home/wasabi/.walletwasabi/client/Logs.txt"
+            )
+
+            fo = BytesIO()
+            for d in stream:
+                fo.write(d)
+            fo.seek(0)
+            with tarfile.open(fileobj=fo) as tar:
+                tar.extractall(f"./logs/{time}/{client.name}/")
+
+            print(f"- stored {client.name} logs")
+        except:
+            print(f"- could not store {client.name} logs")
 
 
 def stop_clients():
