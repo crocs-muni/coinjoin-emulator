@@ -151,30 +151,32 @@ def start_coinjoins():
 def store_logs():
     print("Storing logs")
     time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-    if not os.path.exists("./logs/"):
-        os.mkdir("./logs/")
+    data_path = f"./logs/{time}/data/"
+    os.makedirs(data_path)
 
-    os.mkdir(f"./logs/{time}/")
     try:
-        shutil.copytree("./mounts/backend/", f"./logs/{time}/wasabi-backend/")
+        shutil.copytree(
+            "./mounts/backend/", os.path.join(data_path, "wasabi-backend", "backend")
+        )
         print("- stored backend logs")
     except FileNotFoundError:
         print("- could not find backend logs")
 
     for client in clients:
-        os.mkdir(f"./logs/{time}/{client.name}/")
-        with open(f"./logs/{time}/{client.name}/coins.json", "w") as f:
+        client_path = os.path.join(data_path, client.name)
+        os.mkdir(client_path)
+        with open(os.path.join(client_path, "coins.json"), "w") as f:
             json.dump(client.list_coins(), f, indent=2)
             print(f"- stored {client.name} coins")
-        with open(f"./logs/{time}/{client.name}/unspent_coins.json", "w") as f:
+        with open(os.path.join(client_path, "unspent_coins.json"), "w") as f:
             json.dump(client.list_unspent_coins(), f, indent=2)
             print(f"- stored {client.name} unspent coins")
-        with open(f"./logs/{time}/{client.name}/keys.json", "w") as f:
+        with open(os.path.join(client_path, "keys.json"), "w") as f:
             json.dump(client.list_keys(), f, indent=2)
             print(f"- stored {client.name} keys")
         try:
             stream, _ = docker_client.containers.get(client.name).get_archive(
-                "/home/wasabi/.walletwasabi/client/Logs.txt"
+                "/home/wasabi/.walletwasabi/client/"
             )
 
             fo = BytesIO()
@@ -182,7 +184,7 @@ def store_logs():
                 fo.write(d)
             fo.seek(0)
             with tarfile.open(fileobj=fo) as tar:
-                tar.extractall(f"./logs/{time}/{client.name}/")
+                tar.extractall(client_path)
 
             print(f"- stored {client.name} logs")
         except:
