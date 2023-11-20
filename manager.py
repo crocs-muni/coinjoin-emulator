@@ -154,6 +154,17 @@ def store_logs():
     data_path = f"./logs/{time}/data/"
     os.makedirs(data_path)
 
+    stored_blocks = 0
+    node_path = os.path.join(data_path, "btc-node")
+    os.mkdir(node_path)
+    while stored_blocks < node.get_block_count():
+        block_hash = node.get_block_hash(stored_blocks)
+        block = node.get_block_info(block_hash)
+        with open(os.path.join(node_path, f"block_{stored_blocks}.json"), "w") as f:
+            json.dump(block, f, indent=2)
+        stored_blocks += 1
+    print(f"- stored {stored_blocks} blocks")
+
     try:
         shutil.copytree(
             "./mounts/backend/", os.path.join(data_path, "wasabi-backend", "backend")

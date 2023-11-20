@@ -29,6 +29,20 @@ class BtcNode:
         }
         return self._rpc(request)
 
+    def get_block_hash(self, height):
+        request = {
+            "method": "getblockhash",
+            "params": [height],
+        }
+        return self._rpc(request)
+
+    def get_block_info(self, block_hash):
+        request = {
+            "method": "getblock",
+            "params": [block_hash, 2],
+        }
+        return self._rpc(request)
+
     def mine_block(self, count=1):
         initial_block_count = self.get_block_count()
 
