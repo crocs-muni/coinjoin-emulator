@@ -110,6 +110,18 @@ class WasabiClient:
         }
         return self._rpc(request)
 
+    def list_unspent_coins(self):
+        request = {
+            "method": "listunspentcoins",
+        }
+        return self._rpc(request)
+
+    def list_keys(self):
+        request = {
+            "method": "listkeys",
+        }
+        return self._rpc(request)
+
     def wait_ready(self):
         while True:
             try:

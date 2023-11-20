@@ -166,6 +166,12 @@ def store_logs():
         with open(f"./logs/{time}/{client.name}/coins.json", "w") as f:
             json.dump(client.list_coins(), f, indent=2)
             print(f"- stored {client.name} coins")
+        with open(f"./logs/{time}/{client.name}/unspent_coins.json", "w") as f:
+            json.dump(client.list_unspent_coins(), f, indent=2)
+            print(f"- stored {client.name} unspent coins")
+        with open(f"./logs/{time}/{client.name}/keys.json", "w") as f:
+            json.dump(client.list_keys(), f, indent=2)
+            print(f"- stored {client.name} keys")
         try:
             stream, _ = docker_client.containers.get(client.name).get_archive(
                 "/home/wasabi/.walletwasabi/client/Logs.txt"
