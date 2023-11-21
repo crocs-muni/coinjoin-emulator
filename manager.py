@@ -179,8 +179,13 @@ def stop_coinjoins():
 def store_logs():
     print("Storing logs")
     time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-    data_path = f"./logs/{SCENARIO['name']}_{time}/data/"
+    experiment_path = f"./logs/{SCENARIO['name']}_{time}/"
+    data_path = os.path.join(experiment_path, "data")
     os.makedirs(data_path)
+
+    with open(os.path.join(experiment_path, "scenario.json"), "w") as f:
+        json.dump(SCENARIO, f, indent=2)
+        print("- stored scenario")
 
     stored_blocks = 0
     node_path = os.path.join(data_path, "btc-node")
