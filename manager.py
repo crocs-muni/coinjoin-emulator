@@ -12,6 +12,22 @@ from io import BytesIO
 import tarfile
 
 BTC = 100_000_000
+SCENARIO = {
+    "name": "default",
+    "rounds": 10,
+    "wallets": [
+        {"funds": [200000, 50000]},
+        {"funds": [3000000]},
+        {"funds": [1000000, 500000]},
+        {"funds": [1000000, 500000]},
+        {"funds": [1000000, 500000]},
+        {"funds": [3000000, 15000]},
+        {"funds": [1000000, 500000]},
+        {"funds": [1000000, 500000]},
+        {"funds": [3000000, 600000]},
+        {"funds": [1000000, 500000]},
+    ],
+}
 
 docker_client = None
 docker_network = None
@@ -151,7 +167,7 @@ def start_coinjoins():
 def store_logs():
     print("Storing logs")
     time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-    data_path = f"./logs/{time}/data/"
+    data_path = f"./logs/{SCENARIO['name']}_{time}/data/"
     os.makedirs(data_path)
 
     stored_blocks = 0
@@ -242,31 +258,27 @@ def stop_infrastructure():
 
 
 def main():
+    print(f"Starting scenario {SCENARIO['name']}")
     build_images()
     start_infrastructure()
-    fund_distributor(30)
-    start_clients(10)
+    fund_distributor(49)
+    start_clients(len(SCENARIO["wallets"]))
     invoices = [
-        (clients[0], [200000, 50000]),
-        (clients[1], [3000000]),
-        (clients[2], [1000000, 500000]),
-        (clients[3], [1000000, 500000]),
-        (clients[4], [1000000, 500000]),
-        (clients[5], [3000000, 15000]),
-        (clients[6], [1000000, 500000]),
-        (clients[7], [1000000, 500000]),
-        (clients[8], [3000000, 600000]),
-        (clients[9], [1000000, 500000]),
+        (client, wallet.get("funds", []))
+        for client, wallet in zip(clients, SCENARIO["wallets"])
     ]
     fund_clients(invoices)
     start_coinjoins()
 
     print("Running")
-    while True:
+    rounds = 0
+    while rounds < SCENARIO["rounds"]:
         with open("./mounts/backend/WabiSabi/CoinJoinIdStore.txt") as f:
-            num_lines = sum(1 for _ in f)
-        print(f"- number of coinjoins: {num_lines:<10}", end="\r")
+            rounds = sum(1 for _ in f)
+        print(f"- number of coinjoins: {rounds:<10}", end="\r")
         sleep(1)
+    print()
+    print(f"Round limit reached")
 
 
 if __name__ == "__main__":
@@ -274,6 +286,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--cleanup-only", action="store_true", help="remove old logs and containers"
     )
+    parser.add_argument("--scenario", type=str, help="scenario specification")
 
     args = parser.parse_args()
 
@@ -298,10 +311,15 @@ if __name__ == "__main__":
         print("mounts/ directory removed")
         exit(0)
 
+    if args.scenario:
+        with open(args.scenario) as f:
+            SCENARIO.update(json.load(f))
+
     docker_client = docker.from_env()
     try:
         main()
     except KeyboardInterrupt:
+        print()
         print("KeyboardInterrupt received")
     finally:
         store_logs()
