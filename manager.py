@@ -84,9 +84,14 @@ def start_infrastructure():
         name="wasabi-backend",
         hostname="wasabi-backend",
         ports={"37127": "37127"},
-        environment=["WASABI_BIND=http://0.0.0.0:37127"],
-        volumes=[
-            f"{os.path.abspath('./mounts/backend/')}:/home/wasabi/.walletwasabi/backend/"
+        environment={"WASABI_BIND": "http://0.0.0.0:37127"},
+        mounts=[
+            {
+                "type": "bind",
+                "source": os.path.abspath("./mounts/backend/"),
+                "target": "/home/wasabi/.walletwasabi/backend/",
+                "read_only": False,
+            }
         ],
         network=docker_network.id,
     )
