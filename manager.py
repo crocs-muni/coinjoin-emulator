@@ -169,6 +169,13 @@ def start_coinjoins():
         print(f"- started {client.name}")
 
 
+def stop_coinjoins():
+    print("Stopping coinjoins")
+    for client in clients:
+        client.stop_coinjoin()
+        print(f"- stopped {client.name}")
+
+
 def store_logs():
     print("Storing logs")
     time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
@@ -284,6 +291,8 @@ def main():
         sleep(1)
     print()
     print(f"Round limit reached")
+
+    stop_coinjoins()
 
 
 if __name__ == "__main__":
