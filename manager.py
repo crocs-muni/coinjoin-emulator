@@ -53,6 +53,12 @@ def start_infrastructure():
         shutil.rmtree("./mounts/")
     os.mkdir("./mounts/")
     print("- created mounts/ directory")
+    old_networks = docker_client.networks.list("coinjoin")
+    if old_networks:
+        print("- detected existing coinjoin network")
+        for old_network in old_networks:
+            old_network.remove()
+            print(f"- removed coinjoin network")
     global docker_network
     docker_network = docker_client.networks.create("coinjoin", driver="bridge")
     print(f"- created coinjoin network")
