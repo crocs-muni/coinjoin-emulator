@@ -29,6 +29,7 @@ SCENARIO = {
     ],
 }
 
+args = None
 docker_client = None
 docker_network = None
 node = None
@@ -53,15 +54,18 @@ def start_infrastructure():
         shutil.rmtree("./mounts/")
     os.mkdir("./mounts/")
     print("- created mounts/ directory")
-    old_networks = docker_client.networks.list("coinjoin")
-    if old_networks:
-        print("- detected existing coinjoin network")
-        for old_network in old_networks:
-            old_network.remove()
-            print(f"- removed coinjoin network")
-    global docker_network
-    docker_network = docker_client.networks.create("coinjoin", driver="bridge")
-    print(f"- created coinjoin network")
+    if args.no_network:
+        print("- skipping network creation")
+    else:
+        old_networks = docker_client.networks.list("coinjoin")
+        if old_networks:
+            print("- detected existing coinjoin network")
+            for old_network in old_networks:
+                old_network.remove()
+                print(f"- removed coinjoin network")
+        global docker_network
+        docker_network = docker_client.networks.create("coinjoin", driver="bridge")
+        print(f"- created coinjoin network")
 
     docker_client.containers.run(
         "btc-node",
@@ -69,8 +73,8 @@ def start_infrastructure():
         auto_remove=True,
         name="btc-node",
         hostname="btc-node",
-        ports={"18443": "18443"},
-        network=docker_network.id,
+        ports={"18443": "18443", "18444": "18444"},
+        **({} if args.no_network else {"network": docker_network.id}),
     )
     global node
     node = BtcNode("btc-node")
@@ -92,7 +96,10 @@ def start_infrastructure():
         name="wasabi-backend",
         hostname="wasabi-backend",
         ports={"37127": "37127"},
-        environment={"WASABI_BIND": "http://0.0.0.0:37127"},
+        environment={
+            "WASABI_BIND": "http://0.0.0.0:37127",
+            "ADDR_BTC_NODE": args.addr_btc_node,
+        },
         mounts=[
             {
                 "type": "bind",
@@ -101,7 +108,7 @@ def start_infrastructure():
                 "read_only": False,
             }
         ],
-        network=docker_network.id,
+        **({} if args.no_network else {"network": docker_network.id}),
     )
     global coordinator
     coordinator = WasabiBackend("wasabi-backend", 37127)
@@ -114,8 +121,12 @@ def start_infrastructure():
         auto_remove=True,
         name=f"wasabi-client-distributor",
         hostname=f"wasabi-client-distributor",
+        environment={
+            "ADDR_BTC_NODE": args.addr_btc_node,
+            "ADDR_WASABI_BACKEND": args.addr_wasabi_backend,
+        },
         ports={"37128": "37128"},
-        network=docker_network.id,
+        **({} if args.no_network else {"network": docker_network.id}),
     )
     global distributor
     distributor = WasabiClient("wasabi-client-distributor", 37128)
@@ -142,8 +153,12 @@ def start_clients(num_clients):
             auto_remove=True,
             name=f"wasabi-client-{idx}",
             hostname=f"wasabi-client-{idx}",
+            environment={
+                "ADDR_BTC_NODE": args.addr_btc_node,
+                "ADDR_WASABI_BACKEND": args.addr_wasabi_backend,
+            },
             ports={"37128": 37129 + idx},
-            network=docker_network.id,
+            **({} if args.no_network else {"network": docker_network.id}),
         )
         client = WasabiClient(f"wasabi-client-{idx}", 37129 + idx)
         clients.append(client)
@@ -271,11 +286,12 @@ def stop_infrastructure():
     except docker.errors.NotFound:
         pass
 
-    old_networks = docker_client.networks.list("coinjoin")
-    if old_networks:
-        for old_network in old_networks:
-            old_network.remove()
-            print(f"- removed coinjoin network")
+    if not args.no_network:
+        old_networks = docker_client.networks.list("coinjoin")
+        if old_networks:
+            for old_network in old_networks:
+                old_network.remove()
+                print(f"- removed coinjoin network")
 
     if os.path.exists("./mounts/"):
         shutil.rmtree("./mounts/")
@@ -314,6 +330,20 @@ if __name__ == "__main__":
         "--cleanup-only", action="store_true", help="remove old logs and containers"
     )
     parser.add_argument("--scenario", type=str, help="scenario specification")
+    parser.add_argument(
+        "--no-network",
+        action="store_true",
+        help="do not create network (requires manual configuration of host IP adress in config files)",
+    )
+    parser.add_argument(
+        "--addr-btc-node", type=str, help="override btc-node address", default=""
+    )
+    parser.add_argument(
+        "--addr-wasabi-backend",
+        type=str,
+        help="override wasabi-backend address",
+        default="",
+    )
 
     args = parser.parse_args()
 
