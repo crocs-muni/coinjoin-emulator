@@ -73,10 +73,12 @@ def start_infrastructure():
 
     os.mkdir("./mounts/backend/")
     shutil.copyfile("./wasabi-backend/Config.json", "./mounts/backend/Config.json")
-    shutil.copyfile(
-        "./wasabi-backend/WabiSabiConfig.json",
-        "./mounts/backend/WabiSabiConfig.json",
-    )
+    with open("./wasabi-backend/WabiSabiConfig.json", "r") as f:
+        backend_config = json.load(f)
+    backend_config.update(SCENARIO.get("backend", {}))
+    with open("./mounts/backend/WabiSabiConfig.json", "w") as f:
+        json.dump(backend_config, f, indent=2)
+
     docker_client.containers.run(
         "wasabi-backend",
         detach=True,
