@@ -3,6 +3,7 @@ from manager.wasabi_client import WasabiClient
 from manager.wasabi_backend import WasabiBackend
 from time import sleep, time
 import docker
+import podman
 import os
 import datetime
 import json
@@ -29,6 +30,7 @@ SCENARIO = {
 }
 
 args = None
+podman_client = None
 docker_client = None
 docker_network = None
 node = None
@@ -49,7 +51,7 @@ def build_images():
 
 def start_infrastructure():
     print("Starting infrastructure")
-    if args.no_network:
+    if args.podman:
         print("- skipping network creation")
     else:
         old_networks = docker_client.networks.list("coinjoin")
@@ -62,21 +64,21 @@ def start_infrastructure():
         docker_network = docker_client.networks.create("coinjoin", driver="bridge")
         print(f"- created coinjoin network")
 
-    docker_client.containers.run(
+    (podman_client if args.podman else docker_client).containers.run(
         "btc-node",
         detach=True,
         auto_remove=True,
         name="btc-node",
         hostname="btc-node",
         ports={"18443": "18443", "18444": "18444"},
-        **({} if args.no_network else {"network": docker_network.id}),
+        **({} if args.podman else {"network": docker_network.id}),
     )
     global node
     node = BtcNode("btc-node")
     node.wait_ready()
     print("- started btc-node")
 
-    docker_client.containers.run(
+    (podman_client if args.podman else docker_client).containers.run(
         "wasabi-backend",
         detach=True,
         auto_remove=True,
@@ -87,7 +89,7 @@ def start_infrastructure():
             "WASABI_BIND": "http://0.0.0.0:37127",
             "ADDR_BTC_NODE": args.addr_btc_node,
         },
-        **({} if args.no_network else {"network": docker_network.id}),
+        **({} if args.podman else {"network": docker_network.id}),
     )
     fo = BytesIO()
     with tarfile.open(fileobj=fo, mode="w") as tar:
@@ -114,7 +116,7 @@ def start_infrastructure():
     coordinator.wait_ready()
     print("- started wasabi-backend")
 
-    docker_client.containers.run(
+    (podman_client if args.podman else docker_client).containers.run(
         "wasabi-client",
         detach=True,
         auto_remove=True,
@@ -125,7 +127,7 @@ def start_infrastructure():
             "ADDR_WASABI_BACKEND": args.addr_wasabi_backend,
         },
         ports={"37128": "37128"},
-        **({} if args.no_network else {"network": docker_network.id}),
+        **({} if args.podman else {"network": docker_network.id}),
     )
     global distributor
     distributor = WasabiClient("wasabi-client-distributor", 37128)
@@ -146,7 +148,7 @@ def start_clients(num_clients):
     new_idxs = []
     for _ in range(num_clients):
         idx = len(clients)
-        docker_client.containers.run(
+        (podman_client if args.podman else docker_client).containers.run(
             "wasabi-client",
             detach=True,
             auto_remove=True,
@@ -157,7 +159,7 @@ def start_clients(num_clients):
                 "ADDR_WASABI_BACKEND": args.addr_wasabi_backend,
             },
             ports={"37128": 37129 + idx},
-            **({} if args.no_network else {"network": docker_network.id}),
+            **({} if args.podman else {"network": docker_network.id}),
         )
         client = WasabiClient(f"wasabi-client-{idx}", 37129 + idx)
         clients.append(client)
@@ -269,7 +271,9 @@ def stop_clients():
     print("Stopping clients")
     for client in clients:
         try:
-            docker_client.containers.get(client.name).stop()
+            (podman_client if args.podman else docker_client).containers.get(
+                client.name
+            ).stop()
             print(f"- stopped {client.name}")
         except docker.errors.NotFound:
             pass
@@ -278,22 +282,28 @@ def stop_clients():
 def stop_infrastructure():
     print("Stopping infrastructure")
     try:
-        docker_client.containers.get(node.name).stop()
+        (podman_client if args.podman else docker_client).containers.get(
+            node.name
+        ).stop()
         print("- stopped btc-node")
     except docker.errors.NotFound:
         pass
     try:
-        docker_client.containers.get(coordinator.name).stop()
+        (podman_client if args.podman else docker_client).containers.get(
+            coordinator.name
+        ).stop()
         print("- stopped wasabi-backend")
     except docker.errors.NotFound:
         pass
     try:
-        docker_client.containers.get(distributor.name).stop()
+        (podman_client if args.podman else docker_client).containers.get(
+            distributor.name
+        ).stop()
         print("- stopped wasabi-client-distributor")
     except docker.errors.NotFound:
         pass
 
-    if not args.no_network:
+    if not args.podman:
         old_networks = docker_client.networks.list("coinjoin")
         if old_networks:
             for old_network in old_networks:
@@ -348,9 +358,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("--scenario", type=str, help="scenario specification")
     parser.add_argument(
-        "--no-network",
+        "--podman",
         action="store_true",
-        help="do not create network (requires manual configuration of host IP adress in config files)",
+        help="run in podman-compatible mode (requires the host IP to be set with --addr-*)",
     )
     parser.add_argument(
         "--addr-btc-node", type=str, help="override btc-node address", default=""
@@ -387,6 +397,8 @@ if __name__ == "__main__":
             SCENARIO.update(json.load(f))
 
     docker_client = docker.from_env()
+    if args.podman:
+        podman_client = podman.PodmanClient()
     try:
         main()
     except KeyboardInterrupt:
