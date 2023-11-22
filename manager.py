@@ -1,10 +1,9 @@
 from manager.btc_node import BtcNode
 from manager.wasabi_client import WasabiClient
 from manager.wasabi_backend import WasabiBackend
-from time import sleep
+from time import sleep, time
 import docker
 import os
-import shutil
 import datetime
 import json
 import argparse
@@ -50,10 +49,6 @@ def build_images():
 
 def start_infrastructure():
     print("Starting infrastructure")
-    if os.path.exists("./mounts/"):
-        shutil.rmtree("./mounts/")
-    os.mkdir("./mounts/")
-    print("- created mounts/ directory")
     if args.no_network:
         print("- skipping network creation")
     else:
@@ -81,14 +76,6 @@ def start_infrastructure():
     node.wait_ready()
     print("- started btc-node")
 
-    os.mkdir("./mounts/backend/")
-    shutil.copyfile("./wasabi-backend/Config.json", "./mounts/backend/Config.json")
-    with open("./wasabi-backend/WabiSabiConfig.json", "r") as f:
-        backend_config = json.load(f)
-    backend_config.update(SCENARIO.get("backend", {}))
-    with open("./mounts/backend/WabiSabiConfig.json", "w") as f:
-        json.dump(backend_config, f, indent=2)
-
     docker_client.containers.run(
         "wasabi-backend",
         detach=True,
@@ -100,16 +87,28 @@ def start_infrastructure():
             "WASABI_BIND": "http://0.0.0.0:37127",
             "ADDR_BTC_NODE": args.addr_btc_node,
         },
-        mounts=[
-            {
-                "type": "bind",
-                "source": os.path.abspath("./mounts/backend/"),
-                "target": "/home/wasabi/.walletwasabi/backend/",
-                "read_only": False,
-            }
-        ],
         **({} if args.no_network else {"network": docker_network.id}),
     )
+    fo = BytesIO()
+    with tarfile.open(fileobj=fo, mode="w") as tar:
+        info = tarfile.TarInfo("WabiSabiConfig.json")
+        with open("./wasabi-backend/WabiSabiConfig.json", "r") as config_file:
+            backend_config = json.load(config_file)
+        backend_config.update(SCENARIO.get("backend", {}))
+        scenario_file = BytesIO()
+        scenario_bytes = json.dumps(backend_config, indent=2).encode()
+        scenario_file.write(scenario_bytes)
+        scenario_file.seek(0)
+        info.size = len(scenario_bytes)
+        info.uid = 1000
+        info.gid = 1000
+        info.mtime = int(time())
+        tar.addfile(info, scenario_file)
+    fo.seek(0)
+    docker_client.containers.get("wasabi-backend").put_archive(
+        "/home/wasabi/.walletwasabi/backend/", fo
+    )
+
     global coordinator
     coordinator = WasabiBackend("wasabi-backend", 37127)
     coordinator.wait_ready()
@@ -222,12 +221,20 @@ def store_logs():
     print(f"- stored {stored_blocks} blocks")
 
     try:
-        shutil.copytree(
-            "./mounts/backend/", os.path.join(data_path, "wasabi-backend", "backend")
+        stream, _ = docker_client.containers.get("wasabi-backend").get_archive(
+            "/home/wasabi/.walletwasabi/backend/"
         )
-        print("- stored backend logs")
-    except FileNotFoundError:
-        print("- could not find backend logs")
+
+        fo = BytesIO()
+        for d in stream:
+            fo.write(d)
+        fo.seek(0)
+        with tarfile.open(fileobj=fo) as tar:
+            tar.extractall(os.path.join(data_path, "wasabi-backend"))
+
+        print(f"- stored backend logs")
+    except:
+        print(f"- could not store backend logs")
 
     for client in clients:
         client_path = os.path.join(data_path, client.name)
@@ -293,10 +300,6 @@ def stop_infrastructure():
                 old_network.remove()
                 print(f"- removed coinjoin network")
 
-    if os.path.exists("./mounts/"):
-        shutil.rmtree("./mounts/")
-        print("- removed mounts/")
-
 
 def main():
     print(f"Starting scenario {SCENARIO['name']}")
@@ -314,8 +317,22 @@ def main():
     print("Running")
     rounds = 0
     while SCENARIO["rounds"] == 0 or rounds < SCENARIO["rounds"]:
-        with open("./mounts/backend/WabiSabi/CoinJoinIdStore.txt") as f:
-            rounds = sum(1 for _ in f)
+        stream, _ = docker_client.containers.get("wasabi-backend").get_archive(
+            "/home/wasabi/.walletwasabi/backend/WabiSabi/CoinJoinIdStore.txt"
+        )
+
+        fo = BytesIO()
+        for d in stream:
+            fo.write(d)
+        fo.seek(0)
+        with tarfile.open(fileobj=fo) as tar:
+            rounds = sum(
+                1
+                for _ in tar.extractfile("CoinJoinIdStore.txt")
+                .read()
+                .decode()
+                .split("\n")[:-1]
+            )
         print(f"- number of coinjoins: {rounds:<10}", end="\r")
         sleep(1)
     print()
@@ -363,9 +380,6 @@ if __name__ == "__main__":
             for network in networks:
                 network.remove()
                 print(network.name, "network removed")
-        if os.path.exists("./mounts/"):
-            shutil.rmtree("./mounts/")
-        print("mounts/ directory removed")
         exit(0)
 
     if args.scenario:
