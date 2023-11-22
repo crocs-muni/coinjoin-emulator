@@ -291,7 +291,7 @@ def main():
 
     print("Running")
     rounds = 0
-    while rounds < SCENARIO["rounds"]:
+    while SCENARIO["rounds"] == 0 or rounds < SCENARIO["rounds"]:
         with open("./mounts/backend/WabiSabi/CoinJoinIdStore.txt") as f:
             rounds = sum(1 for _ in f)
         print(f"- number of coinjoins: {rounds:<10}", end="\r")
