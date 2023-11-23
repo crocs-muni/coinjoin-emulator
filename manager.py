@@ -10,6 +10,8 @@ import json
 import argparse
 from io import BytesIO
 import tarfile
+import multiprocessing
+
 
 BTC = 100_000_000
 SCENARIO = {
@@ -267,41 +269,30 @@ def store_logs():
             print(f"- could not store {client.name} logs")
 
 
+def stop_container(container_name):
+    try:
+        (podman_client if args.podman else docker_client).containers.get(
+            container_name
+        ).stop()
+        print(f"- stopped {container_name}")
+    except docker.errors.NotFound:
+        pass
+
+
 def stop_clients():
     print("Stopping clients")
-    for client in clients:
-        try:
-            (podman_client if args.podman else docker_client).containers.get(
-                client.name
-            ).stop()
-            print(f"- stopped {client.name}")
-        except docker.errors.NotFound:
-            pass
+    with multiprocessing.Pool() as pool:
+        pool.map(
+            stop_container,
+            map(lambda x: x.name, clients),
+        )
 
 
 def stop_infrastructure():
     print("Stopping infrastructure")
-    try:
-        (podman_client if args.podman else docker_client).containers.get(
-            node.name
-        ).stop()
-        print("- stopped btc-node")
-    except docker.errors.NotFound:
-        pass
-    try:
-        (podman_client if args.podman else docker_client).containers.get(
-            coordinator.name
-        ).stop()
-        print("- stopped wasabi-backend")
-    except docker.errors.NotFound:
-        pass
-    try:
-        (podman_client if args.podman else docker_client).containers.get(
-            distributor.name
-        ).stop()
-        print("- stopped wasabi-client-distributor")
-    except docker.errors.NotFound:
-        pass
+    stop_container(node.name)
+    stop_container(coordinator.name)
+    stop_container(distributor.name)
 
     if not args.podman:
         old_networks = docker_client.networks.list("coinjoin")
