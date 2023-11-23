@@ -145,10 +145,10 @@ def fund_distributor(btc_amount):
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
 
 
-def start_clients(num_clients):
+def start_clients(wallets):
     print("Starting clients")
     new_idxs = []
-    for _ in range(num_clients):
+    for wallet in wallets:
         idx = len(clients)
         (podman_client if args.podman else docker_client).containers.run(
             "wasabi-client",
@@ -163,7 +163,9 @@ def start_clients(num_clients):
             ports={"37128": 37129 + idx},
             **({} if args.podman else {"network": docker_network.id}),
         )
-        client = WasabiClient(f"wasabi-client-{idx}", 37129 + idx)
+        client = WasabiClient(
+            f"wasabi-client-{idx}", 37129 + idx, wallet.get("delay", 0)
+        )
         clients.append(client)
         new_idxs.append(idx)
 
@@ -188,18 +190,18 @@ def fund_clients(invoices):
     print("- funded")
 
 
-def start_coinjoins():
-    print("Starting coinjoins")
+def start_coinjoins(round=0):
     for client in clients:
-        client.start_coinjoin()
-        print(f"- started {client.name}")
+        if client.delay <= round and not client.active:
+            client.start_coinjoin()
+            print(f"- started mixing {client.name} (round {round})")
 
 
 def stop_coinjoins():
     print("Stopping coinjoins")
     for client in clients:
         client.stop_coinjoin()
-        print(f"- stopped {client.name}")
+        print(f"- stopped mixing {client.name}")
 
 
 def store_logs():
@@ -307,7 +309,7 @@ def main():
     build_images()
     start_infrastructure()
     fund_distributor(49)
-    start_clients(len(SCENARIO["wallets"]))
+    start_clients(SCENARIO["wallets"])
     invoices = [
         (client, wallet.get("funds", []))
         for client, wallet in zip(clients, SCENARIO["wallets"])
@@ -334,7 +336,8 @@ def main():
                 .decode()
                 .split("\n")[:-1]
             )
-        print(f"- number of coinjoins: {rounds:<10}", end="\r")
+        start_coinjoins(rounds)
+        print(f"- coinjoin rounds: {rounds:<10}", end="\r")
         sleep(1)
     print()
     print(f"Round limit reached")

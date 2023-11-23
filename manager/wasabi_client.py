@@ -6,9 +6,11 @@ WALLET_NAME = "wallet"
 
 
 class WasabiClient:
-    def __init__(self, name="wasabi-client", port=37128):
+    def __init__(self, name="wasabi-client", port=37128, delay=0):
         self.name = name
         self.port = port
+        self.delay = delay
+        self.active = False
 
     def _rpc(self, request, wallet=True):
         request["jsonrpc"] = "2.0"
@@ -96,12 +98,14 @@ class WasabiClient:
             "method": "startcoinjoin",
             "params": ["", "True", "True"],
         }
+        self.active = True
         return self._rpc(request)
 
     def stop_coinjoin(self):
         request = {
             "method": "stopcoinjoin",
         }
+        self.active = False
         return self._rpc(request, "wallet")
 
     def list_coins(self):
