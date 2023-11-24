@@ -11,6 +11,7 @@ import argparse
 from io import BytesIO
 import tarfile
 import multiprocessing
+import shutil
 
 
 BTC = 100_000_000
@@ -207,7 +208,7 @@ def stop_coinjoins():
 def store_logs():
     print("Storing logs")
     time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
-    experiment_path = f"./logs/{SCENARIO['name']}_{time}/"
+    experiment_path = f"./logs/{time}_{SCENARIO['name']}"
     data_path = os.path.join(experiment_path, "data")
     os.makedirs(data_path)
 
@@ -269,6 +270,9 @@ def store_logs():
             print(f"- stored {client.name} logs")
         except:
             print(f"- could not store {client.name} logs")
+
+    shutil.make_archive(experiment_path, "zip", experiment_path)
+    print("- zip archive created")
 
 
 def stop_container(container_name):
