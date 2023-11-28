@@ -191,11 +191,11 @@ def fund_clients(invoices):
     print("- funded")
 
 
-def start_coinjoins(round=0):
+def start_coinjoins(delay=0):
     for client in clients:
-        if client.delay <= round and not client.active:
+        if client.delay <= delay and not client.active:
             client.start_coinjoin()
-            print(f"- started mixing {client.name} (round {round})")
+            print(f"- started mixing {client.name} (delay {delay})")
 
 
 def stop_coinjoins():
@@ -323,6 +323,7 @@ def main():
 
     print("Running")
     rounds = 0
+    initial_blocks = node.get_block_count()
     while SCENARIO["rounds"] == 0 or rounds < SCENARIO["rounds"]:
         stream, _ = docker_client.containers.get("wasabi-backend").get_archive(
             "/home/wasabi/.walletwasabi/backend/WabiSabi/CoinJoinIdStore.txt"
@@ -340,7 +341,7 @@ def main():
                 .decode()
                 .split("\n")[:-1]
             )
-        start_coinjoins(rounds)
+        start_coinjoins(node.get_block_count() - initial_blocks)
         print(f"- coinjoin rounds: {rounds:<10}", end="\r")
         sleep(1)
     print()
