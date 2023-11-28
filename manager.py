@@ -312,7 +312,7 @@ def main():
     print(f"Starting scenario {SCENARIO['name']}")
     build_images()
     start_infrastructure()
-    fund_distributor(49)
+    fund_distributor(1000)
     start_clients(SCENARIO["wallets"])
     invoices = [
         (client, wallet.get("funds", []))
