@@ -271,7 +271,7 @@ def store_logs():
         except:
             print(f"- could not store {client.name} logs")
 
-    shutil.make_archive(experiment_path, "zip", experiment_path)
+    shutil.make_archive(experiment_path, "zip", *os.path.split(experiment_path))
     print("- zip archive created")
 
 
