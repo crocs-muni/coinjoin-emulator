@@ -375,15 +375,18 @@ if __name__ == "__main__":
 
     if args.cleanup_only:
         docker_client = docker.from_env()
-        containers = docker_client.containers.list()
-        for container in containers:
-            if containers[0].attrs["Config"]["Image"] in (
-                "btc-node",
-                "wasabi-backend",
-                "wasabi-client",
-            ):
-                container.stop()
-                print(container.name, "container stopped")
+        containers = list(
+            filter(
+                lambda x: x.attrs["Config"]["Image"]
+                in ("btc-node", "wasabi-backend", "wasabi-client"),
+                docker_client.containers.list(),
+            )
+        )
+        with multiprocessing.Pool() as pool:
+            pool.map(
+                stop_container,
+                map(lambda x: x.name, containers),
+            )
         networks = docker_client.networks.list("coinjoin")
         if networks:
             for network in networks:
