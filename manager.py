@@ -177,14 +177,21 @@ def start_clients(wallets):
     return new_idxs
 
 
+def batched(data, batch_size=1):
+    length = len(data)
+    for ndx in range(0, length, batch_size):
+        yield data[ndx : min(ndx + batch_size, length)]
+
+
 def fund_clients(invoices):
     print("Funding clients")
     addressed_invoices = []
-    for client, values in invoices:
-        for value in values:
-            addressed_invoices.append((client.get_new_address(), value))
-    distributor.send(addressed_invoices)
-    print("- created wallet-funding transaction")
+    for batch in batched(invoices, 50):
+        for client, values in batch:
+            for value in values:
+                addressed_invoices.append((client.get_new_address(), value))
+        distributor.send(addressed_invoices)
+        print("- created wallet-funding transaction")
     for client, values in invoices:
         while client.get_balance() < sum(values):
             sleep(0.1)
