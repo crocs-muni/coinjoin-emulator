@@ -155,8 +155,8 @@ def start_clients(wallets):
             "wasabi-client",
             detach=True,
             auto_remove=True,
-            name=f"wasabi-client-{idx}",
-            hostname=f"wasabi-client-{idx}",
+            name=f"wasabi-client-{idx:03}",
+            hostname=f"wasabi-client-{idx:03}",
             environment={
                 "ADDR_BTC_NODE": args.addr_btc_node,
                 "ADDR_WASABI_BACKEND": args.addr_wasabi_backend,
@@ -165,7 +165,7 @@ def start_clients(wallets):
             **({} if args.podman else {"network": docker_network.id}),
         )
         client = WasabiClient(
-            f"wasabi-client-{idx}", 37129 + idx, wallet.get("delay", 0)
+            f"wasabi-client-{idx:03}", 37129 + idx, wallet.get("delay", 0)
         )
         clients.append(client)
         new_idxs.append(idx)
