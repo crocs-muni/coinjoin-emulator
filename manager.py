@@ -2,16 +2,13 @@ from manager.btc_node import BtcNode
 from manager.wasabi_client import WasabiClient
 from manager.wasabi_backend import WasabiBackend
 from time import sleep, time
-import docker
-import podman
 import os
 import datetime
 import json
 import argparse
 from io import BytesIO
-import tarfile
-import multiprocessing
 import shutil
+import tempfile
 
 
 BTC = 100_000_000
@@ -33,9 +30,7 @@ SCENARIO = {
 }
 
 args = None
-podman_client = None
-docker_client = None
-docker_network = None
+driver = None
 node = None
 coordinator = None
 distributor = None
@@ -44,74 +39,43 @@ clients = []
 
 def build_images():
     print("Building Docker images")
-    docker_client.images.build(path="./btc-node", tag="btc-node", rm=True)
+    driver.build("btc-node", "./btc-node")
     print("- btc-node image built")
-    docker_client.images.build(path="./wasabi-backend", tag="wasabi-backend", rm=True)
+    driver.build("wasabi-backend", "./wasabi-backend")
     print("- wasabi-backend image built")
-    docker_client.images.build(path="./wasabi-client", tag="wasabi-client", rm=True)
+    driver.build("wasabi-client", "./wasabi-client")
     print("- wasabi-client image built")
 
 
 def start_infrastructure():
     print("Starting infrastructure")
-    if args.podman:
-        print("- skipping network creation")
-    else:
-        old_networks = docker_client.networks.list("coinjoin")
-        if old_networks:
-            print("- detected existing coinjoin network")
-            for old_network in old_networks:
-                old_network.remove()
-                print(f"- removed coinjoin network")
-        global docker_network
-        docker_network = docker_client.networks.create("coinjoin", driver="bridge")
-        print(f"- created coinjoin network")
-
-    (podman_client if args.podman else docker_client).containers.run(
-        "btc-node",
-        detach=True,
-        auto_remove=True,
-        name="btc-node",
-        hostname="btc-node",
-        ports={"18443": "18443", "18444": "18444"},
-        **({} if args.podman else {"network": docker_network.id}),
-    )
+    driver.run("btc-node", "btc-node", ports={"18443": "18443", "18444": "18444"})
     global node
     node = BtcNode("btc-node")
     node.wait_ready()
     print("- started btc-node")
 
-    (podman_client if args.podman else docker_client).containers.run(
+    driver.run(
         "wasabi-backend",
-        detach=True,
-        auto_remove=True,
-        name="wasabi-backend",
-        hostname="wasabi-backend",
+        "wasabi-backend",
         ports={"37127": "37127"},
-        environment={
+        env={
             "WASABI_BIND": "http://0.0.0.0:37127",
             "ADDR_BTC_NODE": args.addr_btc_node,
         },
-        **({} if args.podman else {"network": docker_network.id}),
     )
-    fo = BytesIO()
-    with tarfile.open(fileobj=fo, mode="w") as tar:
-        info = tarfile.TarInfo("WabiSabiConfig.json")
-        with open("./wasabi-backend/WabiSabiConfig.json", "r") as config_file:
-            backend_config = json.load(config_file)
-        backend_config.update(SCENARIO.get("backend", {}))
-        scenario_file = BytesIO()
-        scenario_bytes = json.dumps(backend_config, indent=2).encode()
-        scenario_file.write(scenario_bytes)
-        scenario_file.seek(0)
-        info.size = len(scenario_bytes)
-        info.uid = 1000
-        info.gid = 1000
-        info.mtime = int(time())
-        tar.addfile(info, scenario_file)
-    fo.seek(0)
-    docker_client.containers.get("wasabi-backend").put_archive(
-        "/home/wasabi/.walletwasabi/backend/", fo
+    with open("./wasabi-backend/WabiSabiConfig.json", "r") as config_file:
+        backend_config = json.load(config_file)
+    backend_config.update(SCENARIO.get("backend", {}))
+
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+        scenario_file = tmp_file.name
+        tmp_file.write(json.dumps(backend_config, indent=2).encode())
+
+    driver.upload(
+        "wasabi-backend",
+        scenario_file,
+        "/home/wasabi/.walletwasabi/backend/WabiSabiConfig.json",
     )
 
     global coordinator
@@ -119,18 +83,14 @@ def start_infrastructure():
     coordinator.wait_ready()
     print("- started wasabi-backend")
 
-    (podman_client if args.podman else docker_client).containers.run(
+    driver.run(
+        "wasabi-client-distributor",
         "wasabi-client",
-        detach=True,
-        auto_remove=True,
-        name=f"wasabi-client-distributor",
-        hostname=f"wasabi-client-distributor",
-        environment={
+        env={
             "ADDR_BTC_NODE": args.addr_btc_node,
             "ADDR_WASABI_BACKEND": args.addr_wasabi_backend,
         },
         ports={"37128": "37128"},
-        **({} if args.podman else {"network": docker_network.id}),
     )
     global distributor
     distributor = WasabiClient("wasabi-client-distributor", 37128)
@@ -151,18 +111,14 @@ def start_clients(wallets):
     new_idxs = []
     for wallet in wallets:
         idx = len(clients)
-        (podman_client if args.podman else docker_client).containers.run(
+        driver.run(
+            f"wasabi-client-{idx:03}",
             "wasabi-client",
-            detach=True,
-            auto_remove=True,
-            name=f"wasabi-client-{idx:03}",
-            hostname=f"wasabi-client-{idx:03}",
-            environment={
+            env={
                 "ADDR_BTC_NODE": args.addr_btc_node,
                 "ADDR_WASABI_BACKEND": args.addr_wasabi_backend,
             },
             ports={"37128": 37129 + idx},
-            **({} if args.podman else {"network": docker_network.id}),
         )
         client = WasabiClient(
             f"wasabi-client-{idx:03}", 37129 + idx, wallet.get("delay", 0)
@@ -235,16 +191,11 @@ def store_logs():
     print(f"- stored {stored_blocks} blocks")
 
     try:
-        stream, _ = docker_client.containers.get("wasabi-backend").get_archive(
-            "/home/wasabi/.walletwasabi/backend/"
+        driver.download(
+            "wasabi-backend",
+            "/home/wasabi/.walletwasabi/backend/",
+            os.path.join(data_path, "wasabi_backend"),
         )
-
-        fo = BytesIO()
-        for d in stream:
-            fo.write(d)
-        fo.seek(0)
-        with tarfile.open(fileobj=fo) as tar:
-            tar.extractall(os.path.join(data_path, "wasabi-backend"))
 
         print(f"- stored backend logs")
     except:
@@ -263,16 +214,9 @@ def store_logs():
             json.dump(client.list_keys(), f, indent=2)
             print(f"- stored {client.name} keys")
         try:
-            stream, _ = docker_client.containers.get(client.name).get_archive(
-                "/home/wasabi/.walletwasabi/client/"
+            driver.download(
+                client.name, "/home/wasabi/.walletwasabi/client/", client_path
             )
-
-            fo = BytesIO()
-            for d in stream:
-                fo.write(d)
-            fo.seek(0)
-            with tarfile.open(fileobj=fo) as tar:
-                tar.extractall(client_path)
 
             print(f"- stored {client.name} logs")
         except:
@@ -282,37 +226,16 @@ def store_logs():
     print("- zip archive created")
 
 
-def stop_container(container_name):
-    try:
-        (podman_client if args.podman else docker_client).containers.get(
-            container_name
-        ).stop()
-        print(f"- stopped {container_name}")
-    except docker.errors.NotFound:
-        pass
-
-
 def stop_clients():
     print("Stopping clients")
-    with multiprocessing.Pool() as pool:
-        pool.map(
-            stop_container,
-            map(lambda x: x.name, clients),
-        )
+    driver.stop_many(map(lambda x: x.name, clients))
 
 
 def stop_infrastructure():
     print("Stopping infrastructure")
-    stop_container(node.name)
-    stop_container(coordinator.name)
-    stop_container(distributor.name)
-
-    if not args.podman:
-        old_networks = docker_client.networks.list("coinjoin")
-        if old_networks:
-            for old_network in old_networks:
-                old_network.remove()
-                print(f"- removed coinjoin network")
+    driver.stop(node.name)
+    driver.stop(coordinator.name)
+    driver.stop(distributor.name)
 
 
 def main():
@@ -332,22 +255,13 @@ def main():
     rounds = 0
     initial_blocks = node.get_block_count()
     while SCENARIO["rounds"] == 0 or rounds < SCENARIO["rounds"]:
-        stream, _ = docker_client.containers.get("wasabi-backend").get_archive(
-            "/home/wasabi/.walletwasabi/backend/WabiSabi/CoinJoinIdStore.txt"
+        rounds = sum(
+            1
+            for _ in driver.peek(
+                "wasabi-backend",
+                "/home/wasabi/.walletwasabi/backend/WabiSabi/CoinJoinIdStore.txt",
+            ).split("\n")[:-1]
         )
-
-        fo = BytesIO()
-        for d in stream:
-            fo.write(d)
-        fo.seek(0)
-        with tarfile.open(fileobj=fo) as tar:
-            rounds = sum(
-                1
-                for _ in tar.extractfile("CoinJoinIdStore.txt")
-                .read()
-                .decode()
-                .split("\n")[:-1]
-            )
         start_coinjoins(node.get_block_count() - initial_blocks)
         print(f"- coinjoin rounds: {rounds:<10}", end="\r")
         sleep(1)
@@ -364,9 +278,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--scenario", type=str, help="scenario specification")
     parser.add_argument(
-        "--podman",
-        action="store_true",
-        help="run in podman-compatible mode (requires the host IP to be set with --addr-*)",
+        "--driver", type=str, choices=["docker", "podman"], default="docker"
     )
     parser.add_argument(
         "--addr-btc-node", type=str, help="override btc-node address", default=""
@@ -380,34 +292,23 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    if args.driver == "docker":
+        from manager.driver.docker import DockerDriver
+
+        driver = DockerDriver()
+    else:
+        from manager.driver.podman import PodmanDriver
+
+        driver = PodmanDriver()
+
     if args.cleanup_only:
-        docker_client = docker.from_env()
-        containers = list(
-            filter(
-                lambda x: x.attrs["Config"]["Image"]
-                in ("btc-node", "wasabi-backend", "wasabi-client"),
-                docker_client.containers.list(),
-            )
-        )
-        with multiprocessing.Pool() as pool:
-            pool.map(
-                stop_container,
-                map(lambda x: x.name, containers),
-            )
-        networks = docker_client.networks.list("coinjoin")
-        if networks:
-            for network in networks:
-                network.remove()
-                print(network.name, "network removed")
+        driver.cleanup()
         exit(0)
 
     if args.scenario:
         with open(args.scenario) as f:
             SCENARIO.update(json.load(f))
 
-    docker_client = docker.from_env()
-    if args.podman:
-        podman_client = podman.PodmanClient()
     try:
         main()
     except KeyboardInterrupt:
@@ -417,3 +318,4 @@ if __name__ == "__main__":
         store_logs()
         stop_clients()
         stop_infrastructure()
+        driver.cleanup()
