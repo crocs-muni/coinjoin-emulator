@@ -10,10 +10,18 @@ class PodmanDriver(Driver):
     def __init__(self):
         self.client = podman.PodmanClient()
 
-    def build(self, name, path):
-        import docker
+    def has_image(self, name):
+        try:
+            docker.from_env().images.get(name)
+            return True
+        except docker.errors.ImageNotFound:
+            return False
 
-        docker.from_env().images.build(path=path, tag=name, rm=True)
+    def build(self, name, path):
+        docker.from_env().images.build(path=path, tag=name, rm=True, nocache=True)
+
+    def pull(self, name):
+        docker.from_env().images.pull(name)
 
     def run(self, name, image, env=None, ports=None):
         self.client.containers.run(
@@ -67,11 +75,15 @@ class PodmanDriver(Driver):
             os.path.dirname(dst_path), fo
         )
 
-    def cleanup(self):
+    def cleanup(self, image_prefix=""):
         containers = list(
             filter(
                 lambda x: x.attrs["Config"]["Image"]
-                in ("btc-node", "wasabi-backend", "wasabi-client"),
+                in (
+                    f"{image_prefix}btc-node",
+                    f"{image_prefix}wasabi-backend",
+                    f"{image_prefix}wasabi-client",
+                ),
                 docker.from_env().containers.list(),
             )
         )

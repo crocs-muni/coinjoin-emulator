@@ -4,7 +4,15 @@ from multiprocessing.pool import ThreadPool
 
 class Driver(ABC):
     @abstractmethod
+    def has_image(self, name):
+        pass
+
+    @abstractmethod
     def build(self, name, path):
+        pass
+
+    @abstractmethod
+    def pull(self, name):
         pass
 
     @abstractmethod
@@ -32,5 +40,5 @@ class Driver(ABC):
         pass
 
     @abstractmethod
-    def cleanup(self):
+    def cleanup(self, image_prefix=""):
         pass

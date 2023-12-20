@@ -6,7 +6,6 @@ import os
 import datetime
 import json
 import argparse
-from io import BytesIO
 import shutil
 import tempfile
 
@@ -37,19 +36,39 @@ distributor = None
 clients = []
 
 
-def build_images():
-    print("Building Docker images")
-    driver.build("btc-node", "./btc-node")
-    print("- btc-node image built")
-    driver.build("wasabi-backend", "./wasabi-backend")
-    print("- wasabi-backend image built")
-    driver.build("wasabi-client", "./wasabi-client")
-    print("- wasabi-client image built")
+def prepare_image(name):
+    prefixed_name = args.image_prefix + name
+    if driver.has_image(prefixed_name):
+        if args.force_rebuild:
+            if args.image_prefix:
+                driver.pull(prefixed_name)
+                print(f"- image pulled {prefixed_name}")
+            else:
+                driver.build(name, f"./{name}")
+                print(f"- image rebuilt {prefixed_name}")
+        else:
+            print(f"- image reused {prefixed_name}")
+    elif args.image_prefix:
+        driver.pull(prefixed_name)
+        print(f"- image pulled {prefixed_name}")
+    else:
+        driver.build(name, f"./{name}")
+        print(f"- image built {prefixed_name}")
+
+
+def prepare_images():
+    prepare_image("btc-node")
+    prepare_image("wasabi-backend")
+    prepare_image("wasabi-client")
 
 
 def start_infrastructure():
     print("Starting infrastructure")
-    driver.run("btc-node", "btc-node", ports={"18443": "18443", "18444": "18444"})
+    driver.run(
+        "btc-node",
+        f"{args.image_prefix}btc-node",
+        ports={"18443": "18443", "18444": "18444"},
+    )
     global node
     node = BtcNode("btc-node")
     node.wait_ready()
@@ -57,7 +76,7 @@ def start_infrastructure():
 
     driver.run(
         "wasabi-backend",
-        "wasabi-backend",
+        f"{args.image_prefix}wasabi-backend",
         ports={"37127": "37127"},
         env={
             "WASABI_BIND": "http://0.0.0.0:37127",
@@ -85,7 +104,7 @@ def start_infrastructure():
 
     driver.run(
         "wasabi-client-distributor",
-        "wasabi-client",
+        f"{args.image_prefix}wasabi-client",
         env={
             "ADDR_BTC_NODE": args.addr_btc_node,
             "ADDR_WASABI_BACKEND": args.addr_wasabi_backend,
@@ -113,7 +132,7 @@ def start_clients(wallets):
         idx = len(clients)
         driver.run(
             f"wasabi-client-{idx:03}",
-            "wasabi-client",
+            f"{args.image_prefix}wasabi-client",
             env={
                 "ADDR_BTC_NODE": args.addr_btc_node,
                 "ADDR_WASABI_BACKEND": args.addr_wasabi_backend,
@@ -240,7 +259,7 @@ def stop_infrastructure():
 
 def main():
     print(f"Starting scenario {SCENARIO['name']}")
-    build_images()
+    prepare_images()
     start_infrastructure()
     fund_distributor(1000)
     start_clients(SCENARIO["wallets"])
@@ -275,6 +294,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run coinjoin simulation setup")
     parser.add_argument(
         "--cleanup-only", action="store_true", help="remove old logs and containers"
+    )
+    parser.add_argument("--image-prefix", type=str, default="", help="image prefix")
+    parser.add_argument(
+        "--force-rebuild", action="store_true", help="force rebuild of images"
     )
     parser.add_argument("--scenario", type=str, help="scenario specification")
     parser.add_argument(
@@ -318,4 +341,4 @@ if __name__ == "__main__":
         store_logs()
         stop_clients()
         stop_infrastructure()
-        driver.cleanup()
+        driver.cleanup(args.image_prefix)

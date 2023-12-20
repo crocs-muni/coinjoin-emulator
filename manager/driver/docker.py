@@ -14,8 +14,18 @@ class DockerDriver(Driver):
     def network(self):
         return self.client.networks.create("coinjoin", driver="bridge")
 
+    def has_image(self, name):
+        try:
+            self.client.images.get(name)
+            return True
+        except docker.errors.ImageNotFound:
+            return False
+
     def build(self, name, path):
-        self.client.images.build(path=path, tag=name, rm=True)
+        self.client.images.build(path=path, tag=name, rm=True, nocache=True)
+
+    def pull(self, name):
+        self.client.images.pull(name)
 
     def run(self, name, image, env=None, ports=None):
         self.client.containers.run(
@@ -68,11 +78,15 @@ class DockerDriver(Driver):
         fo.seek(0)
         self.client.containers.get(name).put_archive(os.path.dirname(dst_path), fo)
 
-    def cleanup(self):
+    def cleanup(self, image_prefix=""):
         containers = list(
             filter(
                 lambda x: x.attrs["Config"]["Image"]
-                in ("btc-node", "wasabi-backend", "wasabi-client"),
+                in (
+                    f"{image_prefix}btc-node",
+                    f"{image_prefix}wasabi-backend",
+                    f"{image_prefix}wasabi-client",
+                ),
                 self.client.containers.list(),
             )
         )
