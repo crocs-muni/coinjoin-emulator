@@ -292,9 +292,7 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run coinjoin simulation setup")
-    parser.add_argument(
-        "--cleanup-only", action="store_true", help="remove old logs and containers"
-    )
+    parser.add_argument("command", type=str, choices=["build", "clean", "run"])
     parser.add_argument("--image-prefix", type=str, default="", help="image prefix")
     parser.add_argument(
         "--force-rebuild", action="store_true", help="force rebuild of images"
@@ -324,9 +322,18 @@ if __name__ == "__main__":
 
         driver = PodmanDriver()
 
-    if args.cleanup_only:
-        driver.cleanup()
-        exit(0)
+    match args.command:
+        case "build":
+            prepare_images()
+            exit(0)
+        case "clean":
+            driver.cleanup(args.image_prefix)
+            exit(0)
+        case "run":
+            pass
+        case _:
+            print("Unknown command")
+            exit(1)
 
     if args.scenario:
         with open(args.scenario) as f:
