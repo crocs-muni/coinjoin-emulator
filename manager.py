@@ -1,7 +1,7 @@
 from manager.btc_node import BtcNode
 from manager.wasabi_client import WasabiClient
 from manager.wasabi_backend import WasabiBackend
-from time import sleep, time
+from time import sleep
 import os
 import datetime
 import json
@@ -64,23 +64,27 @@ def prepare_images():
 
 def start_infrastructure():
     print("Starting infrastructure")
-    driver.run(
+    btc_node_ip, btc_node_ports = driver.run(
         "btc-node",
         f"{args.image_prefix}btc-node",
         ports={"18443": "18443", "18444": "18444"},
     )
     global node
-    node = BtcNode("btc-node")
+    node = BtcNode(
+        host="localhost",
+        port=btc_node_ports["18443"],
+        internal_ip=btc_node_ip,
+    )
     node.wait_ready()
     print("- started btc-node")
 
-    driver.run(
+    wasabi_backend_ip, wasabi_backend_ports = driver.run(
         "wasabi-backend",
         f"{args.image_prefix}wasabi-backend",
         ports={"37127": "37127"},
         env={
             "WASABI_BIND": "http://0.0.0.0:37127",
-            "ADDR_BTC_NODE": args.addr_btc_node,
+            "ADDR_BTC_NODE": args.addr_btc_node or node.internal_ip,
         },
     )
     with open("./wasabi-backend/WabiSabiConfig.json", "r") as config_file:
@@ -98,21 +102,30 @@ def start_infrastructure():
     )
 
     global coordinator
-    coordinator = WasabiBackend("wasabi-backend", 37127)
+    coordinator = WasabiBackend(
+        host="localhost",
+        port=wasabi_backend_ports["37127"],
+        internal_ip=wasabi_backend_ip,
+    )
     coordinator.wait_ready()
     print("- started wasabi-backend")
 
-    driver.run(
+    _, wasabi_client_distributor_ports = driver.run(
         "wasabi-client-distributor",
         f"{args.image_prefix}wasabi-client",
         env={
-            "ADDR_BTC_NODE": args.addr_btc_node,
-            "ADDR_WASABI_BACKEND": args.addr_wasabi_backend,
+            "ADDR_BTC_NODE": args.addr_btc_node or node.internal_ip,
+            "ADDR_WASABI_BACKEND": args.addr_wasabi_backend or coordinator.internal_ip,
         },
         ports={"37128": "37128"},
+        skip_ip=True,
     )
     global distributor
-    distributor = WasabiClient("wasabi-client-distributor", 37128)
+    distributor = WasabiClient(
+        "localhost",
+        wasabi_client_distributor_ports["37128"],
+        "wasabi-client-distributor",
+    )
     distributor.wait_wallet()
     print("- started distributor")
 
@@ -130,17 +143,21 @@ def start_clients(wallets):
     new_idxs = []
     for wallet in wallets:
         idx = len(clients)
-        driver.run(
+        _, manager_ports = driver.run(
             f"wasabi-client-{idx:03}",
             f"{args.image_prefix}wasabi-client",
             env={
-                "ADDR_BTC_NODE": args.addr_btc_node,
-                "ADDR_WASABI_BACKEND": args.addr_wasabi_backend,
+                "ADDR_BTC_NODE": args.addr_btc_node or node.internal_ip,
+                "ADDR_WASABI_BACKEND": args.addr_wasabi_backend
+                or coordinator.internal_ip,
             },
-            ports={"37128": 37129 + idx},
+            ports={"37128": str(37129 + idx)},
         )
         client = WasabiClient(
-            f"wasabi-client-{idx:03}", 37129 + idx, wallet.get("delay", 0)
+            "localhost",
+            manager_ports["37128"],
+            f"wasabi-client-{idx:03}",
+            wallet.get("delay", 0),
         )
         clients.append(client)
         new_idxs.append(idx)
@@ -245,18 +262,6 @@ def store_logs():
     print("- zip archive created")
 
 
-def stop_clients():
-    print("Stopping clients")
-    driver.stop_many(map(lambda x: x.name, clients))
-
-
-def stop_infrastructure():
-    print("Stopping infrastructure")
-    driver.stop(node.name)
-    driver.stop(coordinator.name)
-    driver.stop(distributor.name)
-
-
 def main():
     print(f"Starting scenario {SCENARIO['name']}")
     prepare_images()
@@ -299,7 +304,10 @@ if __name__ == "__main__":
     )
     parser.add_argument("--scenario", type=str, help="scenario specification")
     parser.add_argument(
-        "--driver", type=str, choices=["docker", "podman"], default="docker"
+        "--driver",
+        type=str,
+        choices=["docker", "podman"],
+        default="docker",
     )
     parser.add_argument(
         "--addr-btc-node", type=str, help="override btc-node address", default=""
@@ -346,6 +354,4 @@ if __name__ == "__main__":
         print("KeyboardInterrupt received")
     finally:
         store_logs()
-        stop_clients()
-        stop_infrastructure()
         driver.cleanup(args.image_prefix)

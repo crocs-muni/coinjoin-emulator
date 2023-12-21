@@ -6,9 +6,10 @@ WALLET_NAME = "wallet"
 
 
 class WasabiClient:
-    def __init__(self, name="wasabi-client", port=37128, delay=0):
-        self.name = name
+    def __init__(self, host="localhost", port=37128, name="wasabi-client", delay=0):
+        self.host = host
         self.port = port
+        self.name = name
         self.delay = delay
         self.active = False
 

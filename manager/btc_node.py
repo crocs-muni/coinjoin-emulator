@@ -2,19 +2,20 @@ import requests
 import json
 from time import sleep
 
-URL = "http://localhost:18443"
 WALLET = "wallet"
 
 
 class BtcNode:
-    def __init__(self, name="btc-node"):
-        self.name = name
+    def __init__(self, host="localhost", port=18443, internal_ip=""):
+        self.host = host
+        self.port = port
+        self.internal_ip = internal_ip
 
     def _rpc(self, request, wallet=None):
         request["jsonrpc"] = "2.0"
         request["id"] = "1"
         response = requests.post(
-            URL + ("/wallet/" + WALLET if wallet else ""),
+            f"http://{self.host}:{self.port}" + ("/wallet/" + WALLET if wallet else ""),
             data=json.dumps(request),
             auth=("user", "password"),
         )

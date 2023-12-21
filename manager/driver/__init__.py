@@ -16,7 +16,7 @@ class Driver(ABC):
         pass
 
     @abstractmethod
-    def run(self, name, image, env=None, ports=None):
+    def run(self, name, image, env=None, ports=None, skip_ip=False):
         pass
 
     @abstractmethod

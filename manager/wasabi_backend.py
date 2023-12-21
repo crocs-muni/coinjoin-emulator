@@ -6,15 +6,16 @@ WALLET_NAME = "wallet"
 
 
 class WasabiBackend:
-    def __init__(self, name="wasabi-backend", port=37127):
-        self.name = name
+    def __init__(self, host="localhost", port=37127, internal_ip=""):
+        self.host = host
         self.port = port
+        self.internal_ip = internal_ip
 
     def _rpc(self, request):
         request["jsonrpc"] = "2.0"
         request["id"] = "1"
         response = requests.post(
-            f"http://localhost:{self.port}/{WALLET_NAME}",
+            f"http://{self.host}:{self.port}/{WALLET_NAME}",
             data=json.dumps(request),
         )
         if "error" in response.json():
@@ -25,7 +26,7 @@ class WasabiBackend:
 
     def _get_status(self):
         response = requests.get(
-            f"http://localhost:{self.port}/api/v4/btc/Blockchain/status"
+            f"http://{self.host}:{self.port}/api/v4/btc/Blockchain/status"
         )
         return response.json()
 
