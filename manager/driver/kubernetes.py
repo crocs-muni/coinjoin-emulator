@@ -9,10 +9,10 @@ from kubernetes.stream import stream
 
 
 class KubernetesDriver(Driver):
-    def __init__(self):
+    def __init__(self, namespace="coinjoin"):
         config.load_kube_config()
         self.client = client.CoreV1Api()
-        self._namespace = "coinjoin"
+        self._namespace = namespace
 
     @cached_property
     def namespace(self):

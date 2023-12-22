@@ -328,6 +328,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--control-ip", type=str, help="control ip", default="localhost"
     )
+    parser.add_argument("--namespace", type=str, default="coinjoin")
 
     args = parser.parse_args()
 
@@ -335,7 +336,7 @@ if __name__ == "__main__":
         case "docker":
             from manager.driver.docker import DockerDriver
 
-            driver = DockerDriver()
+            driver = DockerDriver(args.namespace)
         case "podman":
             from manager.driver.podman import PodmanDriver
 
@@ -343,7 +344,7 @@ if __name__ == "__main__":
         case "kubernetes":
             from manager.driver.kubernetes import KubernetesDriver
 
-            driver = KubernetesDriver()
+            driver = KubernetesDriver(args.namespace)
         case _:
             print(f"Unknown driver '{args.driver}'")
             exit(1)

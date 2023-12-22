@@ -7,12 +7,13 @@ import docker
 
 
 class DockerDriver(Driver):
-    def __init__(self):
+    def __init__(self, namespace="coinjoin"):
         self.client = docker.from_env()
+        self._namespace = namespace
 
     @cached_property
     def network(self):
-        return self.client.networks.create("coinjoin", driver="bridge")
+        return self.client.networks.create(self._namespace, driver="bridge")
 
     def has_image(self, name):
         try:
@@ -90,7 +91,7 @@ class DockerDriver(Driver):
             )
         )
         self.stop_many(map(lambda x: x.name, containers))
-        networks = self.client.networks.list("coinjoin")
+        networks = self.client.networks.list(self._namespace)
         if networks:
             for network in networks:
                 network.remove()
