@@ -67,12 +67,12 @@ def start_infrastructure():
     btc_node_ip, btc_node_ports = driver.run(
         "btc-node",
         f"{args.image_prefix}btc-node",
-        ports={"18443": "18443", "18444": "18444"},
+        ports={18443: 18443, 18444: 18444},
     )
     global node
     node = BtcNode(
-        host="localhost",
-        port=btc_node_ports["18443"],
+        host=args.control_ip,
+        port=btc_node_ports[18443],
         internal_ip=btc_node_ip,
     )
     node.wait_ready()
@@ -81,7 +81,7 @@ def start_infrastructure():
     wasabi_backend_ip, wasabi_backend_ports = driver.run(
         "wasabi-backend",
         f"{args.image_prefix}wasabi-backend",
-        ports={"37127": "37127"},
+        ports={37127: 37127},
         env={
             "WASABI_BIND": "http://0.0.0.0:37127",
             "ADDR_BTC_NODE": args.addr_btc_node or node.internal_ip,
@@ -103,8 +103,8 @@ def start_infrastructure():
 
     global coordinator
     coordinator = WasabiBackend(
-        host="localhost",
-        port=wasabi_backend_ports["37127"],
+        host=args.control_ip,
+        port=wasabi_backend_ports[37127],
         internal_ip=wasabi_backend_ip,
     )
     coordinator.wait_ready()
@@ -117,14 +117,14 @@ def start_infrastructure():
             "ADDR_BTC_NODE": args.addr_btc_node or node.internal_ip,
             "ADDR_WASABI_BACKEND": args.addr_wasabi_backend or coordinator.internal_ip,
         },
-        ports={"37128": "37128"},
+        ports={37128: 37128},
         skip_ip=True,
     )
     global distributor
     distributor = WasabiClient(
-        "localhost",
-        wasabi_client_distributor_ports["37128"],
-        "wasabi-client-distributor",
+        host=args.control_ip,
+        port=wasabi_client_distributor_ports[37128],
+        name="wasabi-client-distributor",
     )
     distributor.wait_wallet()
     print("- started distributor")
@@ -151,13 +151,14 @@ def start_clients(wallets):
                 "ADDR_WASABI_BACKEND": args.addr_wasabi_backend
                 or coordinator.internal_ip,
             },
-            ports={"37128": str(37129 + idx)},
+            ports={37128: 37129 + idx},
+            skip_ip=True,
         )
         client = WasabiClient(
-            "localhost",
-            manager_ports["37128"],
-            f"wasabi-client-{idx:03}",
-            wallet.get("delay", 0),
+            host=args.control_ip,
+            port=manager_ports[37128],
+            name=f"wasabi-client-{idx:03}",
+            delay=wallet.get("delay", 0),
         )
         clients.append(client)
         new_idxs.append(idx)
@@ -306,7 +307,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--driver",
         type=str,
-        choices=["docker", "podman"],
+        choices=["docker", "podman", "kubernetes"],
         default="docker",
     )
     parser.add_argument(
@@ -318,6 +319,9 @@ if __name__ == "__main__":
         help="override wasabi-backend address",
         default="",
     )
+    parser.add_argument(
+        "--control-ip", type=str, help="control ip", default="localhost"
+    )
 
     args = parser.parse_args()
 
@@ -325,6 +329,10 @@ if __name__ == "__main__":
         from manager.driver.docker import DockerDriver
 
         driver = DockerDriver()
+    elif args.driver == "kubernetes":
+        from manager.driver.kubernetes import KubernetesDriver
+
+        driver = KubernetesDriver()
     else:
         from manager.driver.podman import PodmanDriver
 

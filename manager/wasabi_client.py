@@ -17,7 +17,7 @@ class WasabiClient:
         request["jsonrpc"] = "2.0"
         request["id"] = "1"
         response = requests.post(
-            f"http://localhost:{self.port}/{WALLET_NAME if wallet else ''}",
+            f"http://{self.host}:{self.port}/{WALLET_NAME if wallet else ''}",
             data=json.dumps(request),
         )
         if "error" in response.json():
