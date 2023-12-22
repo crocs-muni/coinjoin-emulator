@@ -57,10 +57,8 @@ class DockerDriver(Driver):
             fo.seek(0)
             with tarfile.open(fileobj=fo) as tar:
                 tar.extractall(dst_path)
-
-            print(f"- stored backend logs")
         except:
-            print(f"- could not store backend logs")
+            pass
 
     def peek(self, name, path):
         stream, _ = self.client.containers.get(name).get_archive(path)

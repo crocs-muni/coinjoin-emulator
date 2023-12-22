@@ -1,6 +1,7 @@
 from manager.btc_node import BtcNode
 from manager.wasabi_client import WasabiClient
 from manager.wasabi_backend import WasabiBackend
+from manager import utils
 from time import sleep
 import os
 import datetime
@@ -57,6 +58,7 @@ def prepare_image(name):
 
 
 def prepare_images():
+    print("Preparing images")
     prepare_image("btc-node")
     prepare_image("wasabi-backend")
     prepare_image("wasabi-client")
@@ -84,7 +86,7 @@ def start_infrastructure():
         ports={37127: 37127},
         env={
             "WASABI_BIND": "http://0.0.0.0:37127",
-            "ADDR_BTC_NODE": args.addr_btc_node or node.internal_ip,
+            "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
         },
     )
     with open("./wasabi-backend/WabiSabiConfig.json", "r") as config_file:
@@ -114,8 +116,8 @@ def start_infrastructure():
         "wasabi-client-distributor",
         f"{args.image_prefix}wasabi-client",
         env={
-            "ADDR_BTC_NODE": args.addr_btc_node or node.internal_ip,
-            "ADDR_WASABI_BACKEND": args.addr_wasabi_backend or coordinator.internal_ip,
+            "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
+            "ADDR_WASABI_BACKEND": args.wasabi_backend_ip or coordinator.internal_ip,
         },
         ports={37128: 37128},
         skip_ip=True,
@@ -147,8 +149,8 @@ def start_clients(wallets):
             f"wasabi-client-{idx:03}",
             f"{args.image_prefix}wasabi-client",
             env={
-                "ADDR_BTC_NODE": args.addr_btc_node or node.internal_ip,
-                "ADDR_WASABI_BACKEND": args.addr_wasabi_backend
+                "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
+                "ADDR_WASABI_BACKEND": args.wasabi_backend_ip
                 or coordinator.internal_ip,
             },
             ports={37128: 37129 + idx},
@@ -170,25 +172,19 @@ def start_clients(wallets):
     return new_idxs
 
 
-def batched(data, batch_size=1):
-    length = len(data)
-    for ndx in range(0, length, batch_size):
-        yield data[ndx : min(ndx + batch_size, length)]
-
-
 def fund_clients(invoices):
     print("Funding clients")
     addressed_invoices = []
-    for batch in batched(invoices, 50):
+    for batch in utils.batched(invoices, 50):
         for client, values in batch:
             for value in values:
                 addressed_invoices.append((client.get_new_address(), value))
         distributor.send(addressed_invoices)
         print("- created wallet-funding transaction")
     for client, values in invoices:
-        while client.get_balance() < sum(values):
+        while (balance := client.get_balance()) < sum(values):
             sleep(0.1)
-    print("- funded")
+        print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
 
 
 def start_coinjoins(delay=0):
@@ -263,37 +259,47 @@ def store_logs():
     print("- zip archive created")
 
 
-def main():
-    print(f"Starting scenario {SCENARIO['name']}")
-    prepare_images()
-    start_infrastructure()
-    fund_distributor(1000)
-    start_clients(SCENARIO["wallets"])
-    invoices = [
-        (client, wallet.get("funds", []))
-        for client, wallet in zip(clients, SCENARIO["wallets"])
-    ]
-    fund_clients(invoices)
-    start_coinjoins()
+def run():
+    if args.scenario:
+        with open(args.scenario) as f:
+            SCENARIO.update(json.load(f))
 
-    print("Running")
-    rounds = 0
-    initial_blocks = node.get_block_count()
-    while SCENARIO["rounds"] == 0 or rounds < SCENARIO["rounds"]:
-        rounds = sum(
-            1
-            for _ in driver.peek(
-                "wasabi-backend",
-                "/home/wasabi/.walletwasabi/backend/WabiSabi/CoinJoinIdStore.txt",
-            ).split("\n")[:-1]
-        )
-        start_coinjoins(node.get_block_count() - initial_blocks)
-        print(f"- coinjoin rounds: {rounds:<10}", end="\r")
-        sleep(1)
-    print()
-    print(f"Round limit reached")
+    try:
+        print(f"=== Scenario {SCENARIO['name']} ===")
+        prepare_images()
+        start_infrastructure()
+        fund_distributor(1000)
+        start_clients(SCENARIO["wallets"])
+        invoices = [
+            (client, wallet.get("funds", []))
+            for client, wallet in zip(clients, SCENARIO["wallets"])
+        ]
+        fund_clients(invoices)
 
-    stop_coinjoins()
+        print("Mixing")
+        rounds = 0
+        initial_blocks = node.get_block_count()
+        while SCENARIO["rounds"] == 0 or rounds < SCENARIO["rounds"]:
+            rounds = sum(
+                1
+                for _ in driver.peek(
+                    "wasabi-backend",
+                    "/home/wasabi/.walletwasabi/backend/WabiSabi/CoinJoinIdStore.txt",
+                ).split("\n")[:-1]
+            )
+            start_coinjoins(node.get_block_count() - initial_blocks)
+            print(f"- coinjoin rounds: {rounds:<10}", end="\r")
+            sleep(1)
+        print()
+        print(f"- round limit reached")
+
+        stop_coinjoins()
+    except KeyboardInterrupt:
+        print()
+        print("KeyboardInterrupt received")
+    finally:
+        store_logs()
+        driver.cleanup(args.image_prefix)
 
 
 if __name__ == "__main__":
@@ -311,12 +317,12 @@ if __name__ == "__main__":
         default="docker",
     )
     parser.add_argument(
-        "--addr-btc-node", type=str, help="override btc-node address", default=""
+        "--btc-node-ip", type=str, help="override btc-node ip", default=""
     )
     parser.add_argument(
-        "--addr-wasabi-backend",
+        "--wasabi-backend-ip",
         type=str,
-        help="override wasabi-backend address",
+        help="override wasabi-backend ip",
         default="",
     )
     parser.add_argument(
@@ -325,41 +331,30 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.driver == "docker":
-        from manager.driver.docker import DockerDriver
+    match args.driver:
+        case "docker":
+            from manager.driver.docker import DockerDriver
 
-        driver = DockerDriver()
-    elif args.driver == "kubernetes":
-        from manager.driver.kubernetes import KubernetesDriver
+            driver = DockerDriver()
+        case "podman":
+            from manager.driver.podman import PodmanDriver
 
-        driver = KubernetesDriver()
-    else:
-        from manager.driver.podman import PodmanDriver
+            driver = PodmanDriver()
+        case "kubernetes":
+            from manager.driver.kubernetes import KubernetesDriver
 
-        driver = PodmanDriver()
+            driver = KubernetesDriver()
+        case _:
+            print(f"Unknown driver '{args.driver}'")
+            exit(1)
 
     match args.command:
         case "build":
             prepare_images()
-            exit(0)
         case "clean":
             driver.cleanup(args.image_prefix)
-            exit(0)
         case "run":
-            pass
+            run()
         case _:
-            print("Unknown command")
+            print(f"Unknown command '{args.command}'")
             exit(1)
-
-    if args.scenario:
-        with open(args.scenario) as f:
-            SCENARIO.update(json.load(f))
-
-    try:
-        main()
-    except KeyboardInterrupt:
-        print()
-        print("KeyboardInterrupt received")
-    finally:
-        store_logs()
-        driver.cleanup(args.image_prefix)
