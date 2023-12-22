@@ -12,16 +12,17 @@ class KubernetesDriver(Driver):
     def __init__(self):
         config.load_kube_config()
         self.client = client.CoreV1Api()
+        self._namespace = "coinjoin"
 
     @cached_property
     def namespace(self):
         namespace_manifest = {
             "apiVersion": "v1",
             "kind": "Namespace",
-            "metadata": {"name": "coinjoin"},
+            "metadata": {"name": self._namespace},
         }
         self.client.create_namespace(body=namespace_manifest)
-        return "coinjoin"
+        return self._namespace
 
     def has_image(self, name):
         return True
@@ -60,6 +61,17 @@ class KubernetesDriver(Driver):
                             }
                             for k, v in env.items()
                         ],
+                        "securityContext": {
+                            "allowPrivilegeEscalation": False,
+                            "capabilities": {
+                                "drop": ["ALL"],
+                            },
+                            "runAsNonRoot": True,
+                            "runAsUser": 1000,
+                            "seccompProfile": {
+                                "type": "RuntimeDefault",
+                            },
+                        },
                     }
                 ]
             },
@@ -115,7 +127,7 @@ class KubernetesDriver(Driver):
         resp = stream(
             self.client.connect_get_namespaced_pod_exec,
             name,
-            "coinjoin",
+            self.namespace,
             command=exec_command,
             stderr=True,
             stdin=True,
@@ -139,7 +151,7 @@ class KubernetesDriver(Driver):
         resp = stream(
             self.client.connect_get_namespaced_pod_exec,
             name,
-            "coinjoin",
+            self.namespace,
             command=exec_command,
             stderr=True,
             stdin=True,
@@ -166,7 +178,7 @@ class KubernetesDriver(Driver):
         resp = stream(
             self.client.connect_get_namespaced_pod_exec,
             name,
-            "coinjoin",
+            self.namespace,
             command=exec_command,
             stderr=True,
             stdin=True,
@@ -189,4 +201,6 @@ class KubernetesDriver(Driver):
         resp.close()
 
     def cleanup(self, image_prefix=""):
-        self.client.delete_namespace(name="coinjoin", body=client.V1DeleteOptions())
+        self.client.delete_namespace(
+            name=self._namespace, body=client.V1DeleteOptions()
+        )
