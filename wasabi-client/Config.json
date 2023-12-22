@@ -1,10 +1,10 @@
 {
     "Network": "RegTest",
-    "RegTestBackendUri": "http://wasabi-backend:37127/",
+    "RegTestBackendUri": "http://${ADDR_WASABI_BACKEND}:37127/",
     "UseTor": false,
     "DownloadNewVersion": false,
     "StartLocalBitcoinCoreOnStartup": false,
-    "RegTestBitcoinP2pEndPoint": "btc-node:18444",
+    "RegTestBitcoinP2pEndPoint": "${ADDR_BTC_NODE}:18444",
     "JsonRpcServerEnabled": true,
     "JsonRpcUser": "",
     "JsonRpcPassword": "",

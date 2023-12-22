@@ -1,6 +1,7 @@
 #!/bin/bash
-if [ -n "$ADDR_BTC_NODE" ]; then
-    echo "$ADDR_BTC_NODE btc-node" >> /etc/hosts
+if [ -z "$ADDR_BTC_NODE" ]; then
+    export ADDR_BTC_NODE="btc-node"
 fi
-sleep 3
-su wasabi -c ./WalletWasabi.Backend
+mkdir -p /home/wasabi/.walletwasabi/backend
+( echo "cat <<EOF" ; cat /home/wasabi/Config.json ; echo EOF ) | sh > /home/wasabi/.walletwasabi/backend/Config.json
+./WalletWasabi.Backend

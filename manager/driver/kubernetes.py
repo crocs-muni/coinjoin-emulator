@@ -67,7 +67,6 @@ class KubernetesDriver(Driver):
                                 "drop": ["ALL"],
                             },
                             "runAsNonRoot": True,
-                            "runAsUser": 1000,
                             "seccompProfile": {
                                 "type": "RuntimeDefault",
                             },

@@ -1,10 +1,10 @@
 {
     "Network": "RegTest",
     "BitcoinRpcConnectionString": "user:password",
-    "MainNetBitcoinP2pEndPoint": "btc-node:8333",
-    "TestNetBitcoinP2pEndPoint": "btc-node:18333",
-    "RegTestBitcoinP2pEndPoint": "btc-node:18444",
-    "MainNetBitcoinCoreRpcEndPoint": "btc-node:8332",
-    "TestNetBitcoinCoreRpcEndPoint": "btc-node:18332",
-    "RegTestBitcoinCoreRpcEndPoint": "btc-node:18443"
+    "MainNetBitcoinP2pEndPoint": "${ADDR_BTC_NODE}:8333",
+    "TestNetBitcoinP2pEndPoint": "${ADDR_BTC_NODE}:18333",
+    "RegTestBitcoinP2pEndPoint": "${ADDR_BTC_NODE}:18444",
+    "MainNetBitcoinCoreRpcEndPoint": "${ADDR_BTC_NODE}:8332",
+    "TestNetBitcoinCoreRpcEndPoint": "${ADDR_BTC_NODE}:18332",
+    "RegTestBitcoinCoreRpcEndPoint": "${ADDR_BTC_NODE}:18443"
 }
