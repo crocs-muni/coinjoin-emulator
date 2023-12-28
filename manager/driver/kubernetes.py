@@ -9,10 +9,11 @@ from kubernetes.stream import stream
 
 
 class KubernetesDriver(Driver):
-    def __init__(self, namespace="coinjoin"):
+    def __init__(self, namespace="coinjoin", reuse_namespace=False):
         config.load_kube_config()
         self.client = client.CoreV1Api()
         self._namespace = namespace
+        self.reuse_namespace = reuse_namespace
 
     @cached_property
     def namespace(self):
@@ -21,7 +22,8 @@ class KubernetesDriver(Driver):
             "kind": "Namespace",
             "metadata": {"name": self._namespace},
         }
-        self.client.create_namespace(body=namespace_manifest)
+        if not self.reuse_namespace:
+            self.client.create_namespace(body=namespace_manifest)
         return self._namespace
 
     def has_image(self, name):
@@ -200,6 +202,26 @@ class KubernetesDriver(Driver):
         resp.close()
 
     def cleanup(self, image_prefix=""):
-        self.client.delete_namespace(
-            name=self._namespace, body=client.V1DeleteOptions()
-        )
+        pods = self.client.list_namespaced_pod(namespace=self._namespace)
+        for pod in pods.items:
+            if any(
+                x not in pod.metadata.name
+                for x in ("btc-node", "wasabi-backend", "wasabi-client")
+            ):
+                self.client.delete_namespaced_pod(
+                    name=pod.metadata.name, namespace=self._namespace
+                )
+        services = self.client.list_namespaced_service(namespace=self._namespace)
+        for service in services.items:
+            if any(
+                x not in service.metadata.name
+                for x in ("btc-node", "wasabi-backend", "wasabi-client")
+            ):
+                self.client.delete_namespaced_service(
+                    name=service.metadata.name, namespace=self._namespace
+                )
+
+        if not self.reuse_namespace:
+            self.client.delete_namespace(
+                name=self._namespace, body=client.V1DeleteOptions()
+            )

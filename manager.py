@@ -329,6 +329,7 @@ if __name__ == "__main__":
         "--control-ip", type=str, help="control ip", default="localhost"
     )
     parser.add_argument("--namespace", type=str, default="coinjoin")
+    parser.add_argument("--reuse-namespace", action="store_true", default=False)
 
     args = parser.parse_args()
 
@@ -344,7 +345,7 @@ if __name__ == "__main__":
         case "kubernetes":
             from manager.driver.kubernetes import KubernetesDriver
 
-            driver = KubernetesDriver(args.namespace)
+            driver = KubernetesDriver(args.namespace, args.reuse_namespace)
         case _:
             print(f"Unknown driver '{args.driver}'")
             exit(1)
