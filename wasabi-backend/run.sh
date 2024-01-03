@@ -4,4 +4,5 @@ if [ -z "$ADDR_BTC_NODE" ]; then
 fi
 mkdir -p /home/wasabi/.walletwasabi/backend
 ( echo "cat <<EOF" ; cat /home/wasabi/Config.json ; echo EOF ) | sh > /home/wasabi/.walletwasabi/backend/Config.json
+sleep 15
 ./WalletWasabi.Backend
