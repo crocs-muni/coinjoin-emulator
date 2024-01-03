@@ -6,12 +6,15 @@ WALLET_NAME = "wallet"
 
 
 class WasabiClient:
-    def __init__(self, host="localhost", port=37128, name="wasabi-client", delay=0):
+    def __init__(
+        self, host="localhost", port=37128, name="wasabi-client", delay=0, proxy=""
+    ):
         self.host = host
         self.port = port
         self.name = name
         self.delay = delay
         self.active = False
+        self.proxy = proxy
 
     def _rpc(self, request, wallet=True):
         request["jsonrpc"] = "2.0"
@@ -19,6 +22,7 @@ class WasabiClient:
         response = requests.post(
             f"http://{self.host}:{self.port}/{WALLET_NAME if wallet else ''}",
             data=json.dumps(request),
+            proxies=dict(http=self.proxy),
         )
         if "error" in response.json():
             raise Exception(response.json()["error"])

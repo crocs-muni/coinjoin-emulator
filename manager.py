@@ -73,9 +73,10 @@ def start_infrastructure():
     )
     global node
     node = BtcNode(
-        host=args.control_ip,
-        port=btc_node_ports[18443],
+        host=btc_node_ip if args.proxy else args.control_ip,
+        port=18443 if args.proxy else btc_node_ports[18443],
         internal_ip=btc_node_ip,
+        proxy=args.proxy,
     )
     node.wait_ready()
     print("- started btc-node")
@@ -105,14 +106,15 @@ def start_infrastructure():
 
     global coordinator
     coordinator = WasabiBackend(
-        host=args.control_ip,
-        port=wasabi_backend_ports[37127],
+        host=wasabi_backend_ip if args.proxy else args.control_ip,
+        port=37127 if args.proxy else wasabi_backend_ports[37127],
         internal_ip=wasabi_backend_ip,
+        proxy=args.proxy,
     )
     coordinator.wait_ready()
     print("- started wasabi-backend")
 
-    _, wasabi_client_distributor_ports = driver.run(
+    wasabi_client_distributor_ip, wasabi_client_distributor_ports = driver.run(
         "wasabi-client-distributor",
         f"{args.image_prefix}wasabi-client",
         env={
@@ -120,13 +122,13 @@ def start_infrastructure():
             "ADDR_WASABI_BACKEND": args.wasabi_backend_ip or coordinator.internal_ip,
         },
         ports={37128: 37128},
-        skip_ip=True,
     )
     global distributor
     distributor = WasabiClient(
-        host=args.control_ip,
-        port=wasabi_client_distributor_ports[37128],
+        host=wasabi_client_distributor_ip if args.proxy else args.control_ip,
+        port=37128 if args.proxy else wasabi_client_distributor_ports[37128],
         name="wasabi-client-distributor",
+        proxy=args.proxy,
     )
     distributor.wait_wallet()
     print("- started distributor")
@@ -145,7 +147,7 @@ def start_clients(wallets):
     new_idxs = []
     for wallet in wallets:
         idx = len(clients)
-        _, manager_ports = driver.run(
+        ip, manager_ports = driver.run(
             f"wasabi-client-{idx:03}",
             f"{args.image_prefix}wasabi-client",
             env={
@@ -154,13 +156,13 @@ def start_clients(wallets):
                 or coordinator.internal_ip,
             },
             ports={37128: 37129 + idx},
-            skip_ip=True,
         )
         client = WasabiClient(
-            host=args.control_ip,
-            port=manager_ports[37128],
+            host=ip if args.proxy else args.control_ip,
+            port=37128 if args.proxy else manager_ports[37128],
             name=f"wasabi-client-{idx:03}",
             delay=wallet.get("delay", 0),
+            proxy=args.proxy,
         )
         clients.append(client)
         new_idxs.append(idx)
@@ -298,7 +300,8 @@ def run():
         print()
         print("KeyboardInterrupt received")
     finally:
-        store_logs()
+        if not args.no_logs:
+            store_logs()
         driver.cleanup(args.image_prefix)
 
 
@@ -330,6 +333,8 @@ if __name__ == "__main__":
     )
     parser.add_argument("--namespace", type=str, default="coinjoin")
     parser.add_argument("--reuse-namespace", action="store_true", default=False)
+    parser.add_argument("--no-logs", action="store_true", default=False)
+    parser.add_argument("--proxy", type=str, default="")
 
     args = parser.parse_args()
 

@@ -6,10 +6,11 @@ WALLET = "wallet"
 
 
 class BtcNode:
-    def __init__(self, host="localhost", port=18443, internal_ip=""):
+    def __init__(self, host="localhost", port=18443, internal_ip="", proxy=""):
         self.host = host
         self.port = port
         self.internal_ip = internal_ip
+        self.proxy = proxy
 
     def _rpc(self, request, wallet=None):
         request["jsonrpc"] = "2.0"
@@ -18,6 +19,7 @@ class BtcNode:
             f"http://{self.host}:{self.port}" + ("/wallet/" + WALLET if wallet else ""),
             data=json.dumps(request),
             auth=("user", "password"),
+            proxies=dict(http=self.proxy),
         )
         if response.json()["error"] is not None:
             raise Exception(response.json()["error"])
