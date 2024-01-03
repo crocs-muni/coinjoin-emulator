@@ -35,7 +35,7 @@ class KubernetesDriver(Driver):
     def pull(self, name):
         pass
 
-    def run(self, name, image, env=None, ports=None, skip_ip=False):
+    def run(self, name, image, env=None, ports=None, skip_ip=False, important=False):
         if ports is None:
             ports = {}
         if env is None:
@@ -73,6 +73,21 @@ class KubernetesDriver(Driver):
                                 "type": "RuntimeDefault",
                             },
                         },
+                        "resources": {
+                            "limits": {
+                                "cpu": 1,
+                            },
+                            "requests": {
+                                "cpu": 1,
+                            },
+                        } if important else {
+                            "limits": {
+                                "cpu": 0.1,
+                            },
+                            "requests": {
+                                "cpu": 0.1,
+                            },
+                        }
                     }
                 ]
             },

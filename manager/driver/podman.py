@@ -23,7 +23,7 @@ class PodmanDriver(Driver):
     def pull(self, name):
         docker.from_env().images.pull(name)
 
-    def run(self, name, image, env=None, ports=None, skip_ip=False):
+    def run(self, name, image, env=None, ports=None, skip_ip=False, important=False):
         self.client.containers.run(
             image,
             detach=True,

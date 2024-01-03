@@ -70,6 +70,7 @@ def start_infrastructure():
         "btc-node",
         f"{args.image_prefix}btc-node",
         ports={18443: 18443, 18444: 18444},
+        important=True,
     )
     global node
     node = BtcNode(
@@ -89,6 +90,7 @@ def start_infrastructure():
             "WASABI_BIND": "http://0.0.0.0:37127",
             "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
         },
+        important=True,
     )
     with open("./wasabi-backend/WabiSabiConfig.json", "r") as config_file:
         backend_config = json.load(config_file)
