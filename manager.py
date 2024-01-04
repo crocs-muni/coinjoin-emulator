@@ -9,6 +9,7 @@ import json
 import argparse
 import shutil
 import tempfile
+import multiprocessing
 
 
 BTC = 100_000_000
@@ -92,6 +93,7 @@ def start_infrastructure():
         },
         important=True,
     )
+    sleep(1)
     with open("./wasabi-backend/WabiSabiConfig.json", "r") as config_file:
         backend_config = json.load(config_file)
     backend_config.update(SCENARIO.get("backend", {}))
@@ -144,36 +146,33 @@ def fund_distributor(btc_amount):
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
 
 
+def start_client(idx, wallet):
+    ip, manager_ports = driver.run(
+        f"wasabi-client-{idx:03}",
+        f"{args.image_prefix}wasabi-client",
+        env={
+            "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
+            "ADDR_WASABI_BACKEND": args.wasabi_backend_ip or coordinator.internal_ip,
+        },
+        ports={37128: 37129 + idx},
+    )
+    client = WasabiClient(
+        host=ip if args.proxy else args.control_ip,
+        port=37128 if args.proxy else manager_ports[37128],
+        name=f"wasabi-client-{idx:03}",
+        delay=wallet.get("delay", 0),
+        proxy=args.proxy,
+    )
+    client.wait_wallet()
+    print(f"- started {client.name}")
+    return client
+
+
 def start_clients(wallets):
     print("Starting clients")
-    new_idxs = []
-    for wallet in wallets:
-        idx = len(clients)
-        ip, manager_ports = driver.run(
-            f"wasabi-client-{idx:03}",
-            f"{args.image_prefix}wasabi-client",
-            env={
-                "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
-                "ADDR_WASABI_BACKEND": args.wasabi_backend_ip
-                or coordinator.internal_ip,
-            },
-            ports={37128: 37129 + idx},
-        )
-        client = WasabiClient(
-            host=ip if args.proxy else args.control_ip,
-            port=37128 if args.proxy else manager_ports[37128],
-            name=f"wasabi-client-{idx:03}",
-            delay=wallet.get("delay", 0),
-            proxy=args.proxy,
-        )
-        clients.append(client)
-        new_idxs.append(idx)
-
-    for idx in new_idxs:
-        client = clients[idx]
-        client.wait_wallet()
-        print(f"- started {client.name}")
-    return new_idxs
+    with multiprocessing.Pool() as pool:
+        new_clients = pool.starmap(start_client, enumerate(wallets, start=len(clients)))
+    clients.extend(new_clients)
 
 
 def fund_clients(invoices):
