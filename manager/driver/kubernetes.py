@@ -144,10 +144,13 @@ class KubernetesDriver(Driver):
         return pod_ip or "", port_mapping
 
     def stop(self, name):
-        self.client.delete_namespaced_pod(name=name, namespace=self.namespace)
-        self.client.delete_namespaced_service(
-            f"{name}-service", namespace=self.namespace
-        )
+        try:
+            self.client.delete_namespaced_pod(name=name, namespace=self.namespace)
+            self.client.delete_namespaced_service(
+                f"{name}-service", namespace=self.namespace
+            )
+        except:
+            pass
 
     def download(self, name, src_path, dst_path):
         if src_path[-1] == "/":

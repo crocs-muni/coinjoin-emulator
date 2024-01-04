@@ -189,17 +189,42 @@ def start_clients(wallets):
     with multiprocessing.Pool() as pool:
         new_clients = pool.starmap(start_client, enumerate(wallets, start=len(clients)))
 
-    new_clients = list(filter(lambda x: x is not None, new_clients))
-    print(
-        f"- failed to start {len(wallets) - len(new_clients)} clients; continuing ..."
-    )
+        for _ in range(3):
+            restart_idx = list(
+                map(
+                    lambda x: x[0],
+                    filter(
+                        lambda x: x[1] is None,
+                        enumerate(new_clients, start=len(clients)),
+                    ),
+                )
+            )
+
+            if not restart_idx:
+                break
+            print(f"- failed to start {len(restart_idx)} clients; retrying ...")
+            for idx in restart_idx:
+                driver.stop(f"wasabi-client-{idx:03}")
+            sleep(60)
+            restarted_clients = pool.starmap(
+                start_client,
+                ((idx, wallets[idx - len(clients)]) for idx in restart_idx),
+            )
+            for idx, client in enumerate(restarted_clients):
+                if client is not None:
+                    new_clients[restart_idx[idx]] = client
+        else:
+            new_clients = list(filter(lambda x: x is not None, new_clients))
+            print(
+                f"- failed to start {len(wallets) - len(new_clients)} clients; continuing ..."
+            )
     clients.extend(new_clients)
 
 
 def fund_clients(invoices):
     print("Funding clients")
     addressed_invoices = []
-    for batch in utils.batched(invoices, 50):
+    for batch in utils.batched(invoices, 100):
         for client, values in batch:
             for value in values:
                 addressed_invoices.append((client.get_new_address(), value))
