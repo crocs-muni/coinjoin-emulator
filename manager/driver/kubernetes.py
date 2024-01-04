@@ -2,7 +2,7 @@ from functools import cached_property
 from io import BytesIO
 import os
 import tarfile
-from time import sleep
+from time import sleep, time
 from . import Driver
 from kubernetes import client, config
 from kubernetes.stream import stream
@@ -35,7 +35,15 @@ class KubernetesDriver(Driver):
     def pull(self, name):
         pass
 
-    def run(self, name, image, env=None, ports=None, skip_ip=False, important=False):
+    def run(
+        self,
+        name,
+        image,
+        env=None,
+        ports=None,
+        skip_ip=False,
+        important=False,
+    ):
         if ports is None:
             ports = {}
         if env is None:
@@ -46,6 +54,7 @@ class KubernetesDriver(Driver):
             "kind": "Pod",
             "metadata": {"name": name, "labels": {"app": name}},
             "spec": {
+                "restartPolicy": "Never",
                 "containers": [
                     {
                         "image": image,
@@ -80,16 +89,18 @@ class KubernetesDriver(Driver):
                             "requests": {
                                 "cpu": 1,
                             },
-                        } if important else {
+                        }
+                        if important
+                        else {
                             "limits": {
                                 "cpu": 0.1,
                             },
                             "requests": {
                                 "cpu": 0.1,
                             },
-                        }
+                        },
                     }
-                ]
+                ],
             },
         }
 
@@ -134,6 +145,9 @@ class KubernetesDriver(Driver):
 
     def stop(self, name):
         self.client.delete_namespaced_pod(name=name, namespace=self.namespace)
+        self.client.delete_namespaced_service(
+            f"{name}-service", namespace=self.namespace
+        )
 
     def download(self, name, src_path, dst_path):
         if src_path[-1] == "/":

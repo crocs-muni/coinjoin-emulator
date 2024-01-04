@@ -147,15 +147,22 @@ def fund_distributor(btc_amount):
 
 
 def start_client(idx, wallet):
-    ip, manager_ports = driver.run(
-        f"wasabi-client-{idx:03}",
-        f"{args.image_prefix}wasabi-client",
-        env={
-            "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
-            "ADDR_WASABI_BACKEND": args.wasabi_backend_ip or coordinator.internal_ip,
-        },
-        ports={37128: 37129 + idx},
-    )
+    name = f"wasabi-client-{idx:03}"
+    try:
+        ip, manager_ports = driver.run(
+            name,
+            f"{args.image_prefix}wasabi-client",
+            env={
+                "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
+                "ADDR_WASABI_BACKEND": args.wasabi_backend_ip
+                or coordinator.internal_ip,
+            },
+            ports={37128: 37129 + idx},
+        )
+    except Exception as e:
+        print(f"- could not start {name} ({e})")
+        return None
+
     client = WasabiClient(
         host=ip if args.proxy else args.control_ip,
         port=37128 if args.proxy else manager_ports[37128],
@@ -163,7 +170,9 @@ def start_client(idx, wallet):
         delay=wallet.get("delay", 0),
         proxy=args.proxy,
     )
-    client.wait_wallet()
+    if not client.wait_wallet(timeout=30):
+        print(f"- could not start {name} (application timeout)")
+        return None
     print(f"- started {client.name}")
     return client
 
@@ -172,6 +181,11 @@ def start_clients(wallets):
     print("Starting clients")
     with multiprocessing.Pool() as pool:
         new_clients = pool.starmap(start_client, enumerate(wallets, start=len(clients)))
+
+    new_clients = list(filter(lambda x: x is not None, new_clients))
+    print(
+        f"- failed to start {len(wallets) - len(new_clients)} clients; continuing ..."
+    )
     clients.extend(new_clients)
 
 

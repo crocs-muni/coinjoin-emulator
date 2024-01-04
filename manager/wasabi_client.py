@@ -1,6 +1,6 @@
 import json
 import requests
-from time import sleep
+from time import sleep, time
 
 WALLET_NAME = "wallet"
 
@@ -62,8 +62,9 @@ class WasabiClient:
         }
         return self._rpc(request)
 
-    def wait_wallet(self):
-        while True:
+    def wait_wallet(self, timeout=None):
+        start = time()
+        while timeout is None or time() - start < timeout:
             try:
                 self._create_wallet()
             except:
@@ -71,10 +72,12 @@ class WasabiClient:
 
             try:
                 self.get_balance()
-                break
+                return True
             except:
                 pass
+
             sleep(0.1)
+        return False
 
     def _list_unspent_coins(self):
         request = {

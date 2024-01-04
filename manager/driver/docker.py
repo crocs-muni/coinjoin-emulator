@@ -28,7 +28,15 @@ class DockerDriver(Driver):
     def pull(self, name):
         self.client.images.pull(name)
 
-    def run(self, name, image, env=None, ports=None, skip_ip=False, important=False):
+    def run(
+        self,
+        name,
+        image,
+        env=None,
+        ports=None,
+        skip_ip=False,
+        important=False,
+    ):
         self.client.containers.run(
             image,
             detach=True,
