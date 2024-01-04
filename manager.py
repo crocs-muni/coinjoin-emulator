@@ -231,7 +231,7 @@ def store_logs():
         driver.download(
             "wasabi-backend",
             "/home/wasabi/.walletwasabi/backend/",
-            os.path.join(data_path, "wasabi_backend"),
+            os.path.join(data_path, "wasabi-backend"),
         )
 
         print(f"- stored backend logs")
