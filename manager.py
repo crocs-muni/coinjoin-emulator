@@ -2,7 +2,8 @@ from manager.btc_node import BtcNode
 from manager.wasabi_client import WasabiClient
 from manager.wasabi_backend import WasabiBackend
 from manager import utils
-from time import sleep
+from time import sleep, time
+import random
 import os
 import datetime
 import json
@@ -134,7 +135,9 @@ def start_infrastructure():
         name="wasabi-client-distributor",
         proxy=args.proxy,
     )
-    distributor.wait_wallet()
+    if not distributor.wait_wallet(timeout=60):
+        print(f"- could not start distributor (application timeout)")
+        raise Exception("Could not start distributor")
     print("- started distributor")
 
 
@@ -147,6 +150,7 @@ def fund_distributor(btc_amount):
 
 
 def start_client(idx, wallet):
+    sleep(random.random() * 3)
     name = f"wasabi-client-{idx:03}"
     try:
         ip, manager_ports = driver.run(
@@ -170,10 +174,13 @@ def start_client(idx, wallet):
         delay=wallet.get("delay", 0),
         proxy=args.proxy,
     )
-    if not client.wait_wallet(timeout=30):
-        print(f"- could not start {name} (application timeout)")
+    start = time()
+    if not client.wait_wallet(timeout=60):
+        print(
+            f"- could not start {name} (application timeout {time() - start} seconds)"
+        )
         return None
-    print(f"- started {client.name}")
+    print(f"- started {client.name} (wait took {time() - start} seconds)")
     return client
 
 
@@ -198,17 +205,27 @@ def fund_clients(invoices):
                 addressed_invoices.append((client.get_new_address(), value))
         distributor.send(addressed_invoices)
         print("- created wallet-funding transaction")
-    for client, values in invoices:
-        while (balance := client.get_balance()) < sum(values):
-            sleep(0.1)
-        print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
+    sleep(100)
+    # for client, values in invoices:
+    #     while (balance := client.get_balance()) < sum(values):
+    #         sleep(0.1)
+    #     print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
+
+
+def start_coinjoin(client, delay):
+    client.start_coinjoin()
+    print(f"- started mixing {client.name} (delay {delay})")
 
 
 def start_coinjoins(delay=0):
-    for client in clients:
-        if client.delay <= delay and not client.active:
-            client.start_coinjoin()
-            print(f"- started mixing {client.name} (delay {delay})")
+    ready = list(filter(lambda x: (x.delay <= delay and not x.active), clients))
+
+    with multiprocessing.Pool() as pool:
+        pool.starmap(start_coinjoin, ((client, delay) for client in ready))
+
+    # client object are modified in different processes, so we need to update them manually
+    for client in ready:
+        client.active = True
 
 
 def stop_coinjoins():

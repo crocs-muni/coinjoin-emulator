@@ -15,12 +15,17 @@ class BtcNode:
     def _rpc(self, request, wallet=None):
         request["jsonrpc"] = "2.0"
         request["id"] = "1"
-        response = requests.post(
-            f"http://{self.host}:{self.port}" + ("/wallet/" + WALLET if wallet else ""),
-            data=json.dumps(request),
-            auth=("user", "password"),
-            proxies=dict(http=self.proxy),
-        )
+        try:
+            response = requests.post(
+                f"http://{self.host}:{self.port}"
+                + ("/wallet/" + WALLET if wallet else ""),
+                data=json.dumps(request),
+                auth=("user", "password"),
+                proxies=dict(http=self.proxy),
+                timeout=5,
+            )
+        except requests.exceptions.Timeout:
+            return "timeout"
         if response.json()["error"] is not None:
             raise Exception(response.json()["error"])
         return response.json()["result"]

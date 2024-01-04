@@ -15,11 +15,15 @@ class WasabiBackend:
     def _rpc(self, request):
         request["jsonrpc"] = "2.0"
         request["id"] = "1"
-        response = requests.post(
-            f"http://{self.host}:{self.port}/{WALLET_NAME}",
-            data=json.dumps(request),
-            proxies=dict(http=self.proxy),
-        )
+        try:
+            response = requests.post(
+                f"http://{self.host}:{self.port}/{WALLET_NAME}",
+                data=json.dumps(request),
+                proxies=dict(http=self.proxy),
+                timeout=5,
+            )
+        except requests.exceptions.Timeout:
+            return "timeout"
         if "error" in response.json():
             raise Exception(response.json()["error"])
         if "result" in response.json():
@@ -30,6 +34,7 @@ class WasabiBackend:
         response = requests.get(
             f"http://{self.host}:{self.port}/api/v4/btc/Blockchain/status",
             proxies=dict(http=self.proxy),
+            timeout=5,
         )
         return response.json()
 
