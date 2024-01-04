@@ -143,7 +143,8 @@ def start_infrastructure():
 
 def fund_distributor(btc_amount):
     print("Funding distributor")
-    node.fund_address(distributor.get_new_address(), btc_amount)
+    for _ in range(4):
+        node.fund_address(distributor.get_new_address(), btc_amount / 4)
     while (balance := distributor.get_balance()) < btc_amount * BTC:
         sleep(0.1)
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
@@ -224,7 +225,7 @@ def start_clients(wallets):
 def fund_clients(invoices):
     print("Funding clients")
     addressed_invoices = []
-    for batch in utils.batched(invoices, 100):
+    for batch in utils.batched(invoices, 200):
         for client, values in batch:
             for value in values:
                 addressed_invoices.append((client.get_new_address(), value))
@@ -260,6 +261,27 @@ def stop_coinjoins():
         print(f"- stopped mixing {client.name}")
 
 
+def store_client_logs(client, data_path):
+    sleep(random.random() * 3)
+    client_path = os.path.join(data_path, client.name)
+    os.mkdir(client_path)
+    with open(os.path.join(client_path, "coins.json"), "w") as f:
+        json.dump(client.list_coins(), f, indent=2)
+        print(f"- stored {client.name} coins")
+    with open(os.path.join(client_path, "unspent_coins.json"), "w") as f:
+        json.dump(client.list_unspent_coins(), f, indent=2)
+        print(f"- stored {client.name} unspent coins")
+    with open(os.path.join(client_path, "keys.json"), "w") as f:
+        json.dump(client.list_keys(), f, indent=2)
+        print(f"- stored {client.name} keys")
+    try:
+        driver.download(client.name, "/home/wasabi/.walletwasabi/client/", client_path)
+
+        print(f"- stored {client.name} logs")
+    except:
+        print(f"- could not store {client.name} logs")
+
+
 def store_logs():
     print("Storing logs")
     time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")
@@ -293,26 +315,8 @@ def store_logs():
     except:
         print(f"- could not store backend logs")
 
-    for client in clients:
-        client_path = os.path.join(data_path, client.name)
-        os.mkdir(client_path)
-        with open(os.path.join(client_path, "coins.json"), "w") as f:
-            json.dump(client.list_coins(), f, indent=2)
-            print(f"- stored {client.name} coins")
-        with open(os.path.join(client_path, "unspent_coins.json"), "w") as f:
-            json.dump(client.list_unspent_coins(), f, indent=2)
-            print(f"- stored {client.name} unspent coins")
-        with open(os.path.join(client_path, "keys.json"), "w") as f:
-            json.dump(client.list_keys(), f, indent=2)
-            print(f"- stored {client.name} keys")
-        try:
-            driver.download(
-                client.name, "/home/wasabi/.walletwasabi/client/", client_path
-            )
-
-            print(f"- stored {client.name} logs")
-        except:
-            print(f"- could not store {client.name} logs")
+    with multiprocessing.Pool() as pool:
+        pool.starmap(store_client_logs, ((client, data_path) for client in clients))
 
     shutil.make_archive(experiment_path, "zip", *os.path.split(experiment_path))
     print("- zip archive created")
