@@ -342,7 +342,10 @@ def run():
         print("Mixing")
         rounds = 0
         initial_blocks = node.get_block_count()
-        while SCENARIO["rounds"] == 0 or rounds < SCENARIO["rounds"]:
+        blocks = 0
+        while (SCENARIO["rounds"] == 0 or rounds < SCENARIO["rounds"]) and (
+            SCENARIO["blocks"] == 0 or blocks < SCENARIO["blocks"]
+        ):
             rounds = sum(
                 1
                 for _ in driver.peek(
@@ -350,17 +353,16 @@ def run():
                     "/home/wasabi/.walletwasabi/backend/WabiSabi/CoinJoinIdStore.txt",
                 ).split("\n")[:-1]
             )
-            start_coinjoins(node.get_block_count() - initial_blocks)
-            print(f"- coinjoin rounds: {rounds:<10}", end="\r")
+            start_coinjoins(blocks := node.get_block_count() - initial_blocks)
+            print(f"- coinjoin rounds: {rounds} (block {blocks})", end="\r")
             sleep(1)
         print()
-        print(f"- round limit reached")
-
-        stop_coinjoins()
+        print(f"- limit reached")
     except KeyboardInterrupt:
         print()
         print("KeyboardInterrupt received")
     finally:
+        stop_coinjoins()
         if not args.no_logs:
             store_logs()
         driver.cleanup(args.image_prefix)
