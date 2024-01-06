@@ -54,11 +54,11 @@ class WasabiClient:
         }
         return self._rpc(request)["address"]
 
-    def get_balance(self):
+    def get_balance(self, timeout=None):
         request = {
             "method": "getwalletinfo",
         }
-        return self._rpc(request, timeout=None)["balance"]
+        return self._rpc(request, timeout=timeout)["balance"]
 
     def get_coins(self):
         request = {
@@ -75,7 +75,7 @@ class WasabiClient:
                 pass
 
             try:
-                self.get_balance()
+                self.get_balance(timeout=5)
                 return True
             except:
                 pass

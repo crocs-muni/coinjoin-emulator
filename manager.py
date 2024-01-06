@@ -222,6 +222,12 @@ def start_clients(wallets):
     clients.extend(new_clients)
 
 
+def wait_funds(client, funds):
+    while (balance := client.get_balance()) < sum(funds):
+        sleep(0.1)
+    print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
+
+
 def fund_clients(invoices):
     print("Funding clients")
     addressed_invoices = []
@@ -235,10 +241,8 @@ def fund_clients(invoices):
         else:
             print("- created funding transaction")
 
-    for client, values in invoices:
-        while (balance := client.get_balance()) < sum(values):
-            sleep(0.1)
-        print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
+    with multiprocessing.Pool() as pool:
+        pool.starmap(wait_funds, invoices)
 
 
 def start_coinjoin(client, delay):
