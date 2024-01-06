@@ -229,13 +229,16 @@ def fund_clients(invoices):
         for client, values in batch:
             for value in values:
                 addressed_invoices.append((client.get_new_address(), value))
-        distributor.send(addressed_invoices)
-        print("- created wallet-funding transaction")
-    sleep(100)
-    # for client, values in invoices:
-    #     while (balance := client.get_balance()) < sum(values):
-    #         sleep(0.1)
-    #     print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
+        if str(distributor.send(addressed_invoices)) == "timeout":
+            print("- funding timeout timeout")
+            raise Exception("Distributor timeout")
+        else:
+            print("- created funding transaction")
+
+    for client, values in invoices:
+        while (balance := client.get_balance()) < sum(values):
+            sleep(0.1)
+        print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
 
 
 def start_coinjoin(client, delay):

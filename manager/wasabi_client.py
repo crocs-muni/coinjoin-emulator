@@ -58,7 +58,7 @@ class WasabiClient:
         request = {
             "method": "getwalletinfo",
         }
-        return self._rpc(request)["balance"]
+        return self._rpc(request, timeout=None)["balance"]
 
     def get_coins(self):
         request = {
