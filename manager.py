@@ -353,13 +353,20 @@ def run():
         while (SCENARIO["rounds"] == 0 or rounds < SCENARIO["rounds"]) and (
             SCENARIO["blocks"] == 0 or blocks < SCENARIO["blocks"]
         ):
-            rounds = sum(
-                1
-                for _ in driver.peek(
-                    "wasabi-backend",
-                    "/home/wasabi/.walletwasabi/backend/WabiSabi/CoinJoinIdStore.txt",
-                ).split("\n")[:-1]
-            )
+            for _ in range(3):
+                try:
+                    rounds = sum(
+                        1
+                        for _ in driver.peek(
+                            "wasabi-backend",
+                            "/home/wasabi/.walletwasabi/backend/WabiSabi/CoinJoinIdStore.txt",
+                        ).split("\n")[:-1]
+                    )
+                    break
+                except Exception as e:
+                    print(f"- could not get rounds ({e})")
+                    rounds = 0
+
             start_coinjoins(blocks := node.get_block_count() - initial_blocks)
             print(f"- coinjoin rounds: {rounds} (block {blocks})", end="\r")
             sleep(1)
