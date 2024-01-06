@@ -16,7 +16,7 @@ class WasabiClient:
         self.active = False
         self.proxy = proxy
 
-    def _rpc(self, request, wallet=True):
+    def _rpc(self, request, wallet=True, timeout=5):
         request["jsonrpc"] = "2.0"
         request["id"] = "1"
         try:
@@ -24,7 +24,7 @@ class WasabiClient:
                 f"http://{self.host}:{self.port}/{WALLET_NAME if wallet else ''}",
                 data=json.dumps(request),
                 proxies=dict(http=self.proxy),
-                timeout=5,
+                timeout=timeout,
             )
         except requests.exceptions.Timeout:
             return "timeout"
@@ -103,7 +103,7 @@ class WasabiClient:
                 "password": "",
             },
         }
-        return self._rpc(request)
+        return self._rpc(request, timeout=None)
 
     def start_coinjoin(self):
         request = {
@@ -111,7 +111,7 @@ class WasabiClient:
             "params": ["", "True", "True"],
         }
         self.active = True
-        return self._rpc(request)
+        return self._rpc(request, timeout=None)
 
     def stop_coinjoin(self):
         request = {
