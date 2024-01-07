@@ -35,7 +35,8 @@ class DockerDriver(Driver):
         env=None,
         ports=None,
         skip_ip=False,
-        priority=0.1,
+        cpu=0.1,
+        memory=768,
     ):
         self.client.containers.run(
             image,
