@@ -23,7 +23,7 @@ class Driver(ABC):
         env=None,
         ports=None,
         skip_ip=False,
-        important=False,
+        priority=0.1,
     ):
         pass
 

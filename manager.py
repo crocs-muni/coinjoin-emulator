@@ -72,7 +72,7 @@ def start_infrastructure():
         "btc-node",
         f"{args.image_prefix}btc-node",
         ports={18443: 18443, 18444: 18444},
-        important=True,
+        priority=2.0,
     )
     global node
     node = BtcNode(
@@ -92,7 +92,7 @@ def start_infrastructure():
             "WASABI_BIND": "http://0.0.0.0:37127",
             "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
         },
-        important=True,
+        priority=4.0,
     )
     sleep(1)
     with open("./wasabi-backend/WabiSabiConfig.json", "r") as config_file:
@@ -127,6 +127,7 @@ def start_infrastructure():
             "ADDR_WASABI_BACKEND": args.wasabi_backend_ip or coordinator.internal_ip,
         },
         ports={37128: 37128},
+        priority=1.0,
     )
     global distributor
     distributor = WasabiClient(

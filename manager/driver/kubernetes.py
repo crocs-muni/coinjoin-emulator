@@ -42,7 +42,7 @@ class KubernetesDriver(Driver):
         env=None,
         ports=None,
         skip_ip=False,
-        important=False,
+        priority=0.1,
     ):
         if ports is None:
             ports = {}
@@ -84,19 +84,10 @@ class KubernetesDriver(Driver):
                         },
                         "resources": {
                             "limits": {
-                                "cpu": 1,
+                                "cpu": priority,
                             },
                             "requests": {
-                                "cpu": 1,
-                            },
-                        }
-                        if important
-                        else {
-                            "limits": {
-                                "cpu": 0.1,
-                            },
-                            "requests": {
-                                "cpu": 0.1,
+                                "cpu": priority,
                             },
                         },
                     }
