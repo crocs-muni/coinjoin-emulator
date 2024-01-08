@@ -234,8 +234,8 @@ def wait_funds(client, funds):
 
 def fund_clients(invoices):
     print("Funding clients")
-    addressed_invoices = []
     for batch in utils.batched(invoices, 50):
+        addressed_invoices = []
         for client, values in batch:
             for value in values:
                 addressed_invoices.append((client.get_new_address(), value))
