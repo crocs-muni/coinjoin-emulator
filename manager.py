@@ -72,8 +72,8 @@ def start_infrastructure():
         "btc-node",
         f"{args.image_prefix}btc-node",
         ports={18443: 18443, 18444: 18444},
-        cpu=2.0,
-        memory=4096,
+        cpu=4.0,
+        memory=8192,
     )
     global node
     node = BtcNode(
@@ -93,7 +93,7 @@ def start_infrastructure():
             "WASABI_BIND": "http://0.0.0.0:37127",
             "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
         },
-        cpu=4.0,
+        cpu=8.0,
         memory=8192,
     )
     sleep(1)
