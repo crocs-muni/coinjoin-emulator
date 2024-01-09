@@ -37,6 +37,7 @@ node = None
 coordinator = None
 distributor = None
 clients = []
+btc_support = []
 
 
 def prepare_image(name):
@@ -84,7 +85,7 @@ def start_infrastructure():
         proxy=args.proxy,
     )
     node.wait_ready()
-    print("- started btc-node")
+    print("- started btc-main")
 
     wasabi_backend_ip, wasabi_backend_ports = driver.run(
         "wasabi-backend",
@@ -145,7 +146,9 @@ def start_infrastructure():
         raise Exception("Could not start distributor")
     print("- started distributor")
 
-    btc_support = []
+    if args.support_nodes == 0:
+        return
+
     with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
         btc_support_config = tmp_file.name
         tmp_file.write(
@@ -154,7 +157,7 @@ def start_infrastructure():
 
     for i in range(8):
         btc_support_ip, btc_support_ports = driver.run(
-            f"btc-support-{i:02}",
+            f"btc-support-{i:03}",
             f"{args.image_prefix}btc-support",
             ports={18443: 18443, 18444: 18444},
             cpu=2.0,
@@ -170,12 +173,12 @@ def start_infrastructure():
         )
 
         driver.upload(
-            f"btc-support-{i:02}",
+            f"btc-support-{i:03}",
             btc_support_config,
             "/tmp/bitcoin-main",
         )
         btc_support[-1].wait_ready()
-        print(f"- started btc-support-{i:02}")
+        print(f"- started btc-support-{i:03}")
 
 
 def fund_distributor(btc_amount):
@@ -195,7 +198,12 @@ def start_client(idx, wallet):
             name,
             f"{args.image_prefix}wasabi-client",
             env={
-                "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
+                "ADDR_BTC_NODE": args.btc_node_ip
+                or (
+                    node.internal_ip
+                    if args.support_nodes == 0
+                    else btc_support[idx % len(btc_support)].internal_ip
+                ),
                 "ADDR_WASABI_BACKEND": args.wasabi_backend_ip
                 or coordinator.internal_ip,
             },
@@ -449,6 +457,9 @@ if __name__ == "__main__":
     parser.add_argument("--reuse-namespace", action="store_true", default=False)
     parser.add_argument("--no-logs", action="store_true", default=False)
     parser.add_argument("--proxy", type=str, default="")
+    parser.add_argument(
+        "--support-nodes", type=int, default=0
+    )  # TODO fix for other drivers
 
     args = parser.parse_args()
 
