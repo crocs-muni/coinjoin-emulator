@@ -209,6 +209,9 @@ def start_client(idx, wallet):
             },
             ports={37128: 37129 + idx},
         )
+        print(
+            f"- client {name} node idx {idx % len(btc_support)} IP {args.btc_node_ip or (node.internal_ip if args.support_nodes == 0 else btc_support[idx % len(btc_support)].internal_ip)}"
+        )
     except Exception as e:
         print(f"- could not start {name} ({e})")
         return None
@@ -268,8 +271,11 @@ def start_clients(wallets):
 
 
 def wait_funds(client, funds):
+    start = time()
     while (balance := client.get_balance()) < sum(funds):
         sleep(0.1)
+        if time() - start > 60:
+            print(f"- funding timeout {client.name}")
     print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
 
 
