@@ -61,25 +61,26 @@ def prepare_image(name):
 
 def prepare_images():
     print("Preparing images")
-    prepare_image("btc-node")
+    prepare_image("btc-main")
+    prepare_image("btc-support")
     prepare_image("wasabi-backend")
     prepare_image("wasabi-client")
 
 
 def start_infrastructure():
     print("Starting infrastructure")
-    btc_node_ip, btc_node_ports = driver.run(
-        "btc-node",
-        f"{args.image_prefix}btc-node",
+    btc_main_ip, btc_main_ports = driver.run(
+        "btc-main",
+        f"{args.image_prefix}btc-main",
         ports={18443: 18443, 18444: 18444},
         cpu=4.0,
         memory=8192,
     )
     global node
     node = BtcNode(
-        host=btc_node_ip if args.proxy else args.control_ip,
-        port=18443 if args.proxy else btc_node_ports[18443],
-        internal_ip=btc_node_ip,
+        host=btc_main_ip if args.proxy else args.control_ip,
+        port=18443 if args.proxy else btc_main_ports[18443],
+        internal_ip=btc_main_ip,
         proxy=args.proxy,
     )
     node.wait_ready()
@@ -143,6 +144,38 @@ def start_infrastructure():
         print(f"- could not start distributor (application timeout)")
         raise Exception("Could not start distributor")
     print("- started distributor")
+
+    btc_support = []
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+        btc_support_config = tmp_file.name
+        tmp_file.write(
+            f"{btc_main_ip}:{18444 if args.proxy else btc_main_ports[18444]}".encode()
+        )
+
+    for i in range(8):
+        btc_support_ip, btc_support_ports = driver.run(
+            f"btc-support-{i:02}",
+            f"{args.image_prefix}btc-support",
+            ports={18443: 18443, 18444: 18444},
+            cpu=2.0,
+            memory=4096,
+        )
+        btc_support.append(
+            BtcNode(
+                host=btc_support_ip if args.proxy else args.control_ip,
+                port=18443 if args.proxy else btc_support_ports[18443],
+                internal_ip=btc_support_ip,
+                proxy=args.proxy,
+            )
+        )
+
+        driver.upload(
+            f"btc-support-{i:02}",
+            btc_support_config,
+            "/tmp/bitcoin-main",
+        )
+        btc_support[-1].wait_ready()
+        print(f"- started btc-support-{i:02}")
 
 
 def fund_distributor(btc_amount):

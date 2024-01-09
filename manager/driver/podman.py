@@ -90,7 +90,8 @@ class PodmanDriver(Driver):
             filter(
                 lambda x: x.attrs["Config"]["Image"]
                 in (
-                    f"{image_prefix}btc-node",
+                    f"{image_prefix}btc-main",
+                    f"{image_prefix}btc-support",
                     f"{image_prefix}wasabi-backend",
                     f"{image_prefix}wasabi-client",
                 ),
