@@ -227,11 +227,19 @@ def start_clients(wallets):
 
 
 def wait_funds(client, funds):
+    sleep(random.random())
     start = time()
-    while (balance := client.get_balance() + 0.0001) < sum(funds):
+    balance = 0.0
+    while (balance + 0.001) < sum(funds):
+        balance = client.get_balance(timeout=5)
+        if balance == "timeout":
+            balance = 0.0
         sleep(1)
+
         if start - time() > 90:
-            print(f"- funding timeout {client.name} (current balance {balance / BTC:.8f} BTC)")
+            print(
+                f"- funding timeout {client.name} (current balance {balance / BTC:.8f} BTC)"
+            )
             return
     print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
 
