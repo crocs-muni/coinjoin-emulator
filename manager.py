@@ -150,7 +150,7 @@ def fund_distributor(btc_amount):
     for _ in range(4):
         node.fund_address(distributor.get_new_address(), btc_amount / 4)
     while (balance := distributor.get_balance()) < btc_amount * BTC:
-        sleep(0.1)
+        sleep(1)
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
 
 
@@ -227,8 +227,12 @@ def start_clients(wallets):
 
 
 def wait_funds(client, funds):
-    while (balance := client.get_balance()) < sum(funds):
-        sleep(0.1)
+    start = time()
+    while (balance := client.get_balance() + 0.0001) < sum(funds):
+        sleep(1)
+        if start - time() > 90:
+            print(f"- funding timeout {client.name} (current balance {balance / BTC:.8f} BTC)")
+            return
     print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
 
 
