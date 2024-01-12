@@ -16,23 +16,25 @@ class WasabiClient:
         self.active = False
         self.proxy = proxy
 
-    def _rpc(self, request, wallet=True, timeout=5):
+    def _rpc(self, request, wallet=True, timeout=5, repeat=1):
         request["jsonrpc"] = "2.0"
         request["id"] = "1"
-        try:
-            response = requests.post(
-                f"http://{self.host}:{self.port}/{WALLET_NAME if wallet else ''}",
-                data=json.dumps(request),
-                proxies=dict(http=self.proxy),
-                timeout=timeout,
-            )
-        except requests.exceptions.Timeout:
-            return "timeout"
-        if "error" in response.json():
-            raise Exception(response.json()["error"])
-        if "result" in response.json():
-            return response.json()["result"]
-        return None
+        for _ in range(repeat):
+            try:
+                response = requests.post(
+                    f"http://{self.host}:{self.port}/{WALLET_NAME if wallet else ''}",
+                    data=json.dumps(request),
+                    proxies=dict(http=self.proxy),
+                    timeout=timeout,
+                )
+            except requests.exceptions.Timeout:
+                continue
+            if "error" in response.json():
+                raise Exception(response.json()["error"])
+            if "result" in response.json():
+                return response.json()["result"]
+            return None
+        return "timeout"
 
     def get_status(self):
         request = {
@@ -124,19 +126,19 @@ class WasabiClient:
         request = {
             "method": "listcoins",
         }
-        return self._rpc(request)
+        return self._rpc(request, repeat=3)
 
     def list_unspent_coins(self):
         request = {
             "method": "listunspentcoins",
         }
-        return self._rpc(request)
+        return self._rpc(request, repeat=3)
 
     def list_keys(self):
         request = {
             "method": "listkeys",
         }
-        return self._rpc(request)
+        return self._rpc(request, repeat=3)
 
     def wait_ready(self):
         while True:
