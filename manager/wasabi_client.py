@@ -126,19 +126,19 @@ class WasabiClient:
         request = {
             "method": "listcoins",
         }
-        return self._rpc(request, repeat=3)
+        return self._rpc(request, timeout=10, repeat=3)
 
     def list_unspent_coins(self):
         request = {
             "method": "listunspentcoins",
         }
-        return self._rpc(request, repeat=3)
+        return self._rpc(request, timeout=10, repeat=3)
 
     def list_keys(self):
         request = {
             "method": "listkeys",
         }
-        return self._rpc(request, repeat=3)
+        return self._rpc(request, timeout=10, repeat=3)
 
     def wait_ready(self):
         while True:
