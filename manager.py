@@ -16,18 +16,19 @@ import multiprocessing
 BTC = 100_000_000
 SCENARIO = {
     "name": "default",
-    "rounds": 10,
+    "rounds": 10,  # the number of coinjoins after which the simulation stops (0 for no limit)
+    "blocks": 0,  # the number of mined blocks after which the simulation stops (0 for no limit)
     "wallets": [
-        {"funds": [200000, 50000]},
-        {"funds": [3000000]},
-        {"funds": [1000000, 500000]},
-        {"funds": [1000000, 500000]},
-        {"funds": [1000000, 500000]},
-        {"funds": [3000000, 15000]},
-        {"funds": [1000000, 500000]},
-        {"funds": [1000000, 500000]},
-        {"funds": [3000000, 600000]},
-        {"funds": [1000000, 500000]},
+        {"funds": [200000, 50000], "delay": 0},
+        {"funds": [3000000], "delay": 0},
+        {"funds": [1000000, 500000], "delay": 0},
+        {"funds": [1000000, 500000], "delay": 0},
+        {"funds": [1000000, 500000], "delay": 0},
+        {"funds": [3000000, 15000], "delay": 0},
+        {"funds": [1000000, 500000], "delay": 0},
+        {"funds": [1000000, 500000], "delay": 0},
+        {"funds": [3000000, 600000], "delay": 0},
+        {"funds": [1000000, 500000], "delay": 0},
     ],
 }
 
@@ -47,7 +48,7 @@ def prepare_image(name):
                 driver.pull(prefixed_name)
                 print(f"- image pulled {prefixed_name}")
             else:
-                driver.build(name, f"./{name}")
+                driver.build(name, f"./containers/{name}")
                 print(f"- image rebuilt {prefixed_name}")
         else:
             print(f"- image reused {prefixed_name}")
@@ -55,7 +56,7 @@ def prepare_image(name):
         driver.pull(prefixed_name)
         print(f"- image pulled {prefixed_name}")
     else:
-        driver.build(name, f"./{name}")
+        driver.build(name, f"./containers/{name}")
         print(f"- image built {prefixed_name}")
 
 
@@ -97,7 +98,7 @@ def start_infrastructure():
         memory=8192,
     )
     sleep(1)
-    with open("./wasabi-backend/WabiSabiConfig.json", "r") as config_file:
+    with open("./containers/wasabi-backend/WabiSabiConfig.json", "r") as config_file:
         backend_config = json.load(config_file)
     backend_config.update(SCENARIO.get("backend", {}))
 
