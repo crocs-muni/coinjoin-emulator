@@ -3,6 +3,7 @@ from manager.wasabi_client import WasabiClient
 from manager.wasabi_backend import WasabiBackend
 from manager import utils
 from time import sleep, time
+import sys
 import random
 import os
 import datetime
@@ -253,7 +254,7 @@ def fund_clients(invoices):
             for value in values:
                 addressed_invoices.append((client.get_new_address(), value))
         if str(distributor.send(addressed_invoices)) == "timeout":
-            print("- funding timeout timeout")
+            print("- funding timeout")
             raise Exception("Distributor timeout")
         else:
             print("- created funding transaction")
@@ -392,6 +393,8 @@ def run():
     except KeyboardInterrupt:
         print()
         print("KeyboardInterrupt received")
+    except Exception as e:
+        print(f"Exception: {e}", file=sys.stderr)
     finally:
         stop_coinjoins()
         if not args.no_logs:
