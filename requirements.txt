@@ -3,3 +3,4 @@ requests==2.31
 docker==6.1
 podman==4.7
 kubernetes==28.1.0
+numpy==1.26.4

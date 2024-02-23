@@ -2,6 +2,7 @@ from manager.btc_node import BtcNode
 from manager.wasabi_client import WasabiClient
 from manager.wasabi_backend import WasabiBackend
 from manager import utils
+import manager.commands.genscen
 from time import sleep, time
 import sys
 import random
@@ -448,7 +449,14 @@ if __name__ == "__main__":
         "--reuse-namespace", action="store_true", default=False
     )
 
+    genscen_subparser = subparsers.add_parser("genscen", help="generate scenario file")
+    manager.commands.genscen.setup_parser(genscen_subparser)
+
     args = parser.parse_args()
+
+    if args.command == "genscen":
+        manager.commands.genscen.handler(args)
+        exit(0)
 
     match args.driver:
         case "docker":
