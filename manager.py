@@ -404,34 +404,49 @@ def run():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run coinjoin simulation setup")
-    parser.add_argument("command", type=str, choices=["build", "clean", "run"])
-    parser.add_argument("--image-prefix", type=str, default="", help="image prefix")
-    parser.add_argument(
-        "--force-rebuild", action="store_true", help="force rebuild of images"
-    )
-    parser.add_argument("--scenario", type=str, help="scenario specification")
+    subparsers = parser.add_subparsers(dest="command", title="command")
+
     parser.add_argument(
         "--driver",
         type=str,
         choices=["docker", "podman", "kubernetes"],
         default="docker",
     )
-    parser.add_argument(
+    parser.add_argument("--no-logs", action="store_true", default=False)
+
+    build_subparser = subparsers.add_parser("build", help="build images")
+    build_subparser.add_argument(
+        "--force-rebuild", action="store_true", help="force rebuild of images"
+    )
+
+    run_subparser = subparsers.add_parser("run", help="run simulation")
+    run_subparser.add_argument(
+        "--image-prefix", type=str, default="", help="image prefix"
+    )
+    run_subparser.add_argument(
+        "--scenario", type=str, help="scenario specification file"
+    )
+    run_subparser.add_argument(
         "--btc-node-ip", type=str, help="override btc-node ip", default=""
     )
-    parser.add_argument(
+    run_subparser.add_argument(
         "--wasabi-backend-ip",
         type=str,
         help="override wasabi-backend ip",
         default="",
     )
-    parser.add_argument(
+    run_subparser.add_argument(
         "--control-ip", type=str, help="control ip", default="localhost"
     )
-    parser.add_argument("--namespace", type=str, default="coinjoin")
-    parser.add_argument("--reuse-namespace", action="store_true", default=False)
-    parser.add_argument("--no-logs", action="store_true", default=False)
-    parser.add_argument("--proxy", type=str, default="")
+    run_subparser.add_argument("--proxy", type=str, default="")
+    run_subparser.add_argument("--namespace", type=str, default="coinjoin")
+    run_subparser.add_argument("--reuse-namespace", action="store_true", default=False)
+
+    clean_subparser = subparsers.add_parser("clean", help="clean up")
+    clean_subparser.add_argument("--namespace", type=str, default="coinjoin")
+    clean_subparser.add_argument(
+        "--reuse-namespace", action="store_true", default=False
+    )
 
     args = parser.parse_args()
 
