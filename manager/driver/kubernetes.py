@@ -2,10 +2,11 @@ from functools import cached_property
 from io import BytesIO
 import os
 import tarfile
-from time import sleep, time
+from time import sleep
 from . import Driver
 from kubernetes import client, config
 from kubernetes.stream import stream
+from kubernetes.client.exceptions import ApiException
 
 
 class KubernetesDriver(Driver):
@@ -234,18 +235,24 @@ class KubernetesDriver(Driver):
                 x in pod.metadata.name
                 for x in ("btc-node", "wasabi-backend", "wasabi-client")
             ):
-                self.client.delete_namespaced_pod(
-                    name=pod.metadata.name, namespace=self._namespace
-                )
+                try:
+                    self.client.delete_namespaced_pod(
+                        name=pod.metadata.name, namespace=self._namespace
+                    )
+                except ApiException:
+                    pass
         services = self.client.list_namespaced_service(namespace=self._namespace)
         for service in services.items:
             if any(
                 x in service.metadata.name
                 for x in ("btc-node", "wasabi-backend", "wasabi-client")
             ):
-                self.client.delete_namespaced_service(
-                    name=service.metadata.name, namespace=self._namespace
-                )
+                try:
+                    self.client.delete_namespaced_service(
+                        name=service.metadata.name, namespace=self._namespace
+                    )
+                except ApiException:
+                    pass
 
         if not self.reuse_namespace:
             self.client.delete_namespace(
