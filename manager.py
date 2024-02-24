@@ -451,6 +451,10 @@ if __name__ == "__main__":
     clean_subparser.add_argument(
         "--reuse-namespace", action="store_true", default=False
     )
+    clean_subparser.add_argument("--proxy", type=str, default="")
+    clean_subparser.add_argument(
+        "--image-prefix", type=str, default="", help="image prefix"
+    )
 
     genscen_subparser = subparsers.add_parser("genscen", help="generate scenario file")
     manager.commands.genscen.setup_parser(genscen_subparser)
