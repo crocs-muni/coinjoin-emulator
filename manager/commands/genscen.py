@@ -30,8 +30,8 @@ def setup_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--distribution",
         type=str,
-        default="uniformsum",
-        choices=["uniformsum", "paretosum"],
+        default="pareto",
+        choices=["uniformsum", "paretosum", "uniform", "pareto"],
         help="fund distribution strategy",
     )
     parser.add_argument(
@@ -82,28 +82,31 @@ def handler(args):
 
     delays = [0] * args.client_count
 
-    match args.distribution:
-        case "uniformsum":
-            for delay in delays:
+    for delay in delays:
+        match args.distribution:
+            case "uniform":
                 dist = numpy.random.uniform(0.0, 1.0, args.utxo_count)
-                funds = list(
-                    map(lambda x: round(x), list(dist / sum(dist) * 100_000_000))
-                )
-                scenario["wallets"].append({"funds": funds, "delay": delay})
-        case "paretosum":
-            for delay in delays:
+                funds = map(round, dist * 10_000_000)
+            case "pareto":
                 dist = numpy.random.pareto(1.16, args.utxo_count)
-                funds = list(
-                    map(lambda x: round(x), list(dist / sum(dist) * 100_000_000))
-                )
-                scenario["wallets"].append({"funds": funds, "delay": delay})
-        case _:
-            print("Invalid distribution")
-            return {}
+                funds = map(round, dist * 1_000_000)
+            case "uniformsum":
+                dist = numpy.random.uniform(0.0, 1.0, args.utxo_count)
+                funds = map(round, list(dist / sum(dist) * 100_000_000))
+            case "paretosum":
+                dist = numpy.random.pareto(1.16, args.utxo_count)
+                funds = map(round, list(dist / sum(dist) * 100_000_000))
+            case _:
+                print("Invalid distribution")
+                return {}
+        scenario["wallets"].append({"funds": list(funds), "delay": delay})
 
     os.makedirs(args.out_dir, exist_ok=True)
     if os.path.exists(f"{args.out_dir}/{scenario['name']}.json") and not args.force:
-        print(f"File {args.out_dir}/{scenario['name']}.json already exists", file=sys.stderr)
+        print(
+            f"File {args.out_dir}/{scenario['name']}.json already exists",
+            file=sys.stderr,
+        )
         return
 
     with open(f"{args.out_dir}/{scenario['name']}.json", "w") as f:
