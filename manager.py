@@ -26,6 +26,7 @@ SCENARIO = {
     "name": "default",
     "rounds": 10,  # the number of coinjoins after which the simulation stops (0 for no limit)
     "blocks": 0,  # the number of mined blocks after which the simulation stops (0 for no limit)
+    "default_version": "2.0.4",
     "wallets": [
         {"funds": [200000, 50000], "delay": 0},
         {"funds": [3000000], "delay": 0},
@@ -136,9 +137,10 @@ def start_infrastructure():
     coordinator.wait_ready()
     print("- started wasabi-backend")
 
+    distributor_version = SCENARIO.get("default_version", "2.0.4")
     wasabi_client_distributor_ip, wasabi_client_distributor_ports = driver.run(
         "wasabi-client-distributor",
-        f"{args.image_prefix}wasabi-client",
+        f"{args.image_prefix}wasabi-client-{distributor_version}",
         env={
             "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
             "ADDR_WASABI_BACKEND": args.wasabi_backend_ip or coordinator.internal_ip,
@@ -148,11 +150,12 @@ def start_infrastructure():
         memory=2048,
     )
     global distributor
-    distributor = WasabiClient(
+    distributor = create_rpc_client(
+        distributor_version,
         host=wasabi_client_distributor_ip if args.proxy else args.control_ip,
         port=37128 if args.proxy else wasabi_client_distributor_ports[37128],
         name="wasabi-client-distributor",
-        proxy=args.proxy,
+        delay = 0
     )
     if not distributor.wait_wallet(timeout=60):
         print(f"- could not start distributor (application timeout)")
@@ -187,6 +190,8 @@ def create_rpc_client(client_version, ip, port, name, delay):
     )
 
 def start_client(idx, wallet):
+    client_version = wallet.get("version", SCENARIO["default_version"])
+
     sleep(random.random() * 3)
     name = f"wasabi-client-{idx:03}"
     try:
@@ -204,13 +209,14 @@ def start_client(idx, wallet):
         print(f"- could not start {name} ({e})")
         return None
 
-    client = WasabiClient(
-        host=ip if args.proxy else args.control_ip,
-        port=37128 if args.proxy else manager_ports[37128],
-        name=f"wasabi-client-{idx:03}",
-        delay=wallet.get("delay", 0),
-        proxy=args.proxy,
+    client = create_rpc_client(
+        client_version,
+        ip if args.proxy else args.control_ip,
+        37128 if args.proxy else manager_ports[37128],
+        f"wasabi-client-{idx:03}",
+        wallet.get("delay", 0),
     )
+
     start = time()
     if not client.wait_wallet(timeout=60):
         print(
