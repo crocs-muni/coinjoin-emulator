@@ -56,7 +56,7 @@ def get_paralelism_pool():
         return multiprocessing.Pool()
 
 
-def prepare_image(name):
+def prepare_image(name, path = None):
     prefixed_name = args.image_prefix + name
     if driver.has_image(prefixed_name):
         if args.force_rebuild:
@@ -64,7 +64,7 @@ def prepare_image(name):
                 driver.pull(prefixed_name)
                 print(f"- image pulled {prefixed_name}")
             else:
-                driver.build(name, f"./containers/{name}")
+                driver.build(name, f"./containers/{name}" if path is None else path)
                 print(f"- image rebuilt {prefixed_name}")
         else:
             print(f"- image reused {prefixed_name}")
@@ -72,15 +72,21 @@ def prepare_image(name):
         driver.pull(prefixed_name)
         print(f"- image pulled {prefixed_name}")
     else:
-        driver.build(name, f"./containers/{name}")
+        driver.build(name, f"./containers/{name}" if path is None else path)
         print(f"- image built {prefixed_name}")
 
+def prepare_client_images():
+    for version in versions:
+        major_version = version[0]
+        name = f"wasabi-client-{version}"
+        path = f"./containers/v{major_version}/{version}"
+        prepare_image(name, path)
 
 def prepare_images():
     print("Preparing images")
     prepare_image("btc-node")
     prepare_image("wasabi-backend")
-    prepare_image("wasabi-client")
+    prepare_client_images()
 
 
 def start_infrastructure():
