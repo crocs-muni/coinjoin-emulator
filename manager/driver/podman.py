@@ -86,7 +86,9 @@ class PodmanDriver(Driver):
         )
 
     def cleanup(self, image_prefix="", versions=None):
-        image_names = set([f"{image_prefix}btc-node",f"{image_prefix}wasabi-backend"])
+        image_names = set([
+            f"{image_prefix}btc-node",
+            f"{image_prefix}wasabi-backend"])
         
         if versions:
             for version in versions:
