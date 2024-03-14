@@ -47,6 +47,7 @@ node = None
 coordinator = None
 distributor = None
 clients = []
+versions = set()
 
 def get_paralelism_pool():
     if platform.system() == "Windows":
@@ -384,9 +385,6 @@ def store_logs():
 
 
 def run():
-    if args.scenario:
-        with open(args.scenario) as f:
-            SCENARIO.update(json.load(f))
 
     try:
         print(f"=== Scenario {SCENARIO['name']} ===")
@@ -516,6 +514,16 @@ if __name__ == "__main__":
         case _:
             print(f"Unknown driver '{args.driver}'")
             exit(1)
+
+    if args.scenario:
+        with open(args.scenario) as f:
+            SCENARIO.update(json.load(f))
+
+    versions.add(SCENARIO["default_version"])
+    for wallet in SCENARIO["wallets"]:
+        if "version" in wallet:
+            versions.add(wallet["version"])
+
 
     match args.command:
         case "build":
