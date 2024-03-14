@@ -159,7 +159,7 @@ def start_infrastructure():
     global distributor
     distributor = create_rpc_client(
         distributor_version,
-        host=wasabi_client_distributor_ip if args.proxy else args.control_ip,
+        wasabi_client_distributor_ip if args.proxy else args.control_ip,
         port=37128 if args.proxy else wasabi_client_distributor_ports[37128],
         name="wasabi-client-distributor",
         delay = 0
@@ -521,7 +521,7 @@ if __name__ == "__main__":
             print(f"Unknown driver '{args.driver}'")
             exit(1)
 
-    if args.scenario:
+    if "scenario" in args:
         with open(args.scenario) as f:
             SCENARIO.update(json.load(f))
 
