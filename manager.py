@@ -13,6 +13,8 @@ import argparse
 import shutil
 import tempfile
 import multiprocessing
+import multiprocessing.pool
+import platform
 
 
 BTC = 100_000_000
@@ -40,6 +42,12 @@ node = None
 coordinator = None
 distributor = None
 clients = []
+
+def get_paralelism_pool():
+    if platform.system() == "Windows":
+        return multiprocessing.pool.ThreadPool()
+    else:
+        return multiprocessing.Pool()
 
 
 def prepare_image(name):
@@ -195,7 +203,7 @@ def start_client(idx, wallet):
 
 def start_clients(wallets):
     print("Starting clients")
-    with multiprocessing.Pool() as pool:
+    with get_paralelism_pool() as pool:
         new_clients = pool.starmap(start_client, enumerate(wallets, start=len(clients)))
 
         for _ in range(3):
@@ -261,7 +269,7 @@ def fund_clients(invoices):
         else:
             print("- created funding transaction")
 
-    with multiprocessing.Pool() as pool:
+    with get_paralelism_pool() as pool:
         pool.starmap(wait_funds, invoices)
 
 
@@ -291,11 +299,13 @@ def update_coinjoins(block=0, round=0):
     start = list(filter(start_condition, clients))
     stop = list(filter(stop_condition, clients))
 
-    with multiprocessing.Pool() as pool:
+
+    with get_paralelism_pool() as pool:
         pool.starmap(start_coinjoin, ((client, block, round) for client in start))
 
-    with multiprocessing.Pool() as pool:
+    with get_paralelism_pool() as pool:
         pool.starmap(stop_coinjoin, ((client, block, round) for client in stop))
+
 
     # client object are modified in different processes, so we need to update them manually
     for client in start:
@@ -365,7 +375,7 @@ def store_logs():
     except:
         print(f"- could not store backend logs")
 
-    with multiprocessing.Pool() as pool:
+    with get_paralelism_pool() as pool:
         pool.starmap(store_client_logs, ((client, data_path) for client in clients))
 
     shutil.make_archive(experiment_path, "zip", *os.path.split(experiment_path))
