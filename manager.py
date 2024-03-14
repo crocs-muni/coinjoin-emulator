@@ -16,6 +16,10 @@ import multiprocessing
 import multiprocessing.pool
 import platform
 
+from manager.wasabi_clients.client_versions_enum import VersionsEnum
+from manager.wasabi_clients.wasabi_client_v1 import WasabiClientV1
+from manager.wasabi_clients.wasabi_client_v2_old import WasabiClientV2Old
+from manager.wasabi_clients.wasabi_client_v2_new import WasabiClientV2New
 
 BTC = 100_000_000
 SCENARIO = {
@@ -164,6 +168,23 @@ def fund_distributor(btc_amount):
         sleep(1)
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
 
+def create_rpc_client(client_version, ip, port, name, delay):
+    version = VersionsEnum[client_version]
+    if version < VersionsEnum['2.0.0']:
+        client_class = WasabiClientV1
+    elif version >= VersionsEnum['2.0.0'] and version < VersionsEnum['2.0.4']:
+        client_class = WasabiClientV2Old
+    else:
+        client_class = WasabiClientV2New
+    
+    return client_class(
+        host=ip,
+        port=port,
+        name=name,
+        delay=delay,
+        proxy=args.proxy,
+        version=version
+    )
 
 def start_client(idx, wallet):
     sleep(random.random() * 3)
