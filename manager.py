@@ -29,7 +29,8 @@ SCENARIO = {
     "default_version": "2.0.4",
     "wallets": [
         {"funds": [200000, 50000], "delay": 0},
-        {"funds": [3000000], "delay": 0},
+        {"funds": [3000000], "delay": 0,
+         "version": "2.0.3"},
         {"funds": [1000000, 500000], "delay": 0},
         {"funds": [1000000, 500000], "delay": 0},
         {"funds": [1000000, 500000], "delay": 0},
@@ -79,7 +80,7 @@ def prepare_client_images():
     for version in versions:
         major_version = version[0]
         name = f"wasabi-client-{version}"
-        path = f"./containers/v{major_version}/{version}"
+        path = f"./containers/wasabi-clients/v{major_version}/{version}"
         prepare_image(name, path)
 
 def prepare_images():
