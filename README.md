@@ -5,8 +5,9 @@ A container-based setup for simulating CoinJoins on RegTest network.
 ## Usage
 
 1. Install [Docker](https://docker.com/) and [Python](http://python.org/).
-2. Install dependencies: `pip install -r requirements.txt`.
-3. Run the default scenario on the default driver: `python manager.py run`.
+2. Clone the repository `git clone --recurse-submodules https://github.com/crocs-muni/coinjoin-simulator`.
+3. Install dependencies: `pip install -r requirements.txt`.
+4. Run the default scenario with the default driver: `python manager.py run`.
    - [Scenario](#scenarios) definition file can be specified using the `--scenario` option.
 
 For more complex setups see section [Advanced usage](#advanced-usage).
@@ -28,6 +29,7 @@ Scenario definition files can be passed to the simulation script using the `--sc
     "wallets": [
         {"funds": [200000, 50000]},
         {"funds": [3000000], "delay": 10},
+        {"funds": [1000000, 50000], "delay": 1, "skip_rounds": [3, 5, 6]},
         ...
     ],
 }
@@ -41,6 +43,7 @@ The fields are as follows:
 - `wallets` field is a list of wallet configurations. Each wallet configuration is a dictionary with the following fields:
   - `funds` is a list of funds in satoshis that the wallet will use for coinjoins.
   - `delay` is the number of blocks the wallet will wait before joining coinjoins.
+  - `skip_rounds` is a list of coinjoin rounds during which a wallet should not participate.
 
 
 ## Advanced usage
