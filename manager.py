@@ -180,6 +180,7 @@ def start_client(idx, wallet):
         port=37128 if args.proxy else manager_ports[37128],
         name=f"wasabi-client-{idx:03}",
         delay=wallet.get("delay", 0),
+        skip_rounds=wallet.get("skip_rounds", list()),
         proxy=args.proxy,
     )
     start = time()
@@ -264,20 +265,43 @@ def fund_clients(invoices):
         pool.starmap(wait_funds, invoices)
 
 
-def start_coinjoin(client, delay):
+def start_coinjoin(client, block, round):
     client.start_coinjoin()
-    print(f"- started mixing {client.name} (delay {delay})")
+    print(f"- started mixing {client.name} (block {block}, round {round})")
 
 
-def start_coinjoins(delay=0):
-    ready = list(filter(lambda x: (x.delay <= delay and not x.active), clients))
+def stop_coinjoin(client, block, round):
+    client.stop_coinjoin()
+    print(f"- stopped mixing {client.name} (block {block}, round {round})")
+
+
+def update_coinjoins(block=0, round=0):
+    def start_condition(client):
+        if client.active:
+            return False
+
+        return client.delay <= block and round not in client.skip_rounds
+
+    def stop_condition(client):
+        if not client.active:
+            return False
+
+        return round in client.skip_rounds
+
+    start = list(filter(start_condition, clients))
+    stop = list(filter(stop_condition, clients))
 
     with multiprocessing.Pool() as pool:
-        pool.starmap(start_coinjoin, ((client, delay) for client in ready))
+        pool.starmap(start_coinjoin, ((client, block, round) for client in start))
+
+    with multiprocessing.Pool() as pool:
+        pool.starmap(stop_coinjoin, ((client, block, round) for client in stop))
 
     # client object are modified in different processes, so we need to update them manually
-    for client in ready:
+    for client in start:
         client.active = True
+    for client in stop:
+        client.active = False
 
 
 def stop_coinjoins():
@@ -367,14 +391,14 @@ def run():
 
         print("Mixing")
         rounds = 0
-        initial_blocks = node.get_block_count()
+        initial_block = node.get_block_count()
         blocks = 0
         while (SCENARIO["rounds"] == 0 or rounds < SCENARIO["rounds"]) and (
             SCENARIO["blocks"] == 0 or blocks < SCENARIO["blocks"]
         ):
             for _ in range(3):
                 try:
-                    rounds = sum(
+                    round = sum(
                         1
                         for _ in driver.peek(
                             "wasabi-backend",
@@ -384,10 +408,10 @@ def run():
                     break
                 except Exception as e:
                     print(f"- could not get rounds ({e})")
-                    rounds = 0
+                    round = 0
 
-            start_coinjoins(blocks := node.get_block_count() - initial_blocks)
-            print(f"- coinjoin rounds: {rounds} (block {blocks})", end="\r")
+            update_coinjoins(block := node.get_block_count() - initial_block, round)
+            print(f"- coinjoin rounds: {round} (block {block})", end="\r")
             sleep(1)
         print()
         print(f"- limit reached")
