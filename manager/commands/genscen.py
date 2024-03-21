@@ -61,6 +61,12 @@ def setup_parser(parser: argparse.ArgumentParser):
         default=120,
         help="terminate after N blocks, 0 for no limit",
     )
+    parser.add_argument(
+        "--skip-rounds",
+        type=str,
+        default="none",
+        help="skip rounds ('none' for none, 'random(fraction)' for randomly sampled fraction of rounds, or comma-separated list of rounds to skip)",
+    )
     parser.add_argument("--force", action="store_true", help="overwrite existing files")
     parser.add_argument(
         "--out-dir", type=str, default="scenarios", help="output directory"
@@ -68,6 +74,7 @@ def setup_parser(parser: argparse.ArgumentParser):
 
 
 def handler(args):
+    print("Generating scenario...")
     scenario = copy.deepcopy(SCENARIO_TEMPLATE)
     scenario["name"] = (
         f"{args.distribution}-static-{args.client_count}-{args.utxo_count}utxo"
@@ -82,7 +89,43 @@ def handler(args):
 
     delays = [0] * args.client_count
 
+    skip_rounds = None
+    if args.skip_rounds != "none":
+        if args.skip_rounds.startswith("random"):
+            if args.stop_round == 0:
+                print("- cannot use random skip rounds with no stop round")
+                sys.exit(1)
+
+            fraction = 2 / 3
+            if args.skip_rounds != "random":
+                try:
+                    fraction = float(args.skip_rounds.split("(")[1].split(")")[0])
+                except IndexError:
+                    print("- random skip rounds fraction parsing failed")
+                    sys.exit(1)
+            print(f"- skipping {fraction * 100:.2f}% of rounds")
+
+            skip_rounds = lambda: sorted(
+                map(
+                    int,
+                    numpy.random.choice(
+                        range(0, args.stop_round),
+                        size=int(args.stop_round * fraction),
+                        replace=False,
+                    ),
+                )
+            )
+        else:
+            try:
+                skip_rounds = lambda: sorted(map(int, args.skip_rounds.split(",")))
+            except ValueError:
+                print("- invalid skip rounds list")
+                sys.exit(1)
+
     for delay in delays:
+        wallet = dict()
+        wallet["delay"] = delay
+
         match args.distribution:
             case "uniform":
                 dist = numpy.random.uniform(0.0, 1.0, args.utxo_count)
@@ -97,25 +140,28 @@ def handler(args):
                 dist = numpy.random.pareto(1.16, args.utxo_count)
                 funds = map(round, list(dist / sum(dist) * 100_000_000))
             case _:
-                print("Invalid distribution")
-                return {}
-        scenario["wallets"].append({"funds": list(funds), "delay": delay})
+                print("- invalid distribution")
+                sys.exit(1)
+        wallet["funds"] = list(funds)
+
+        if skip_rounds:
+            wallet["skip_rounds"] = skip_rounds()
+
+        scenario["wallets"].append(wallet)
+
+    print(
+        f"- requires {(sum(map(lambda x: sum(x['funds']), scenario['wallets'])) / 100_000_000):0.8f} BTC"
+    )
 
     os.makedirs(args.out_dir, exist_ok=True)
     if os.path.exists(f"{args.out_dir}/{scenario['name']}.json") and not args.force:
-        print(
-            f"File {args.out_dir}/{scenario['name']}.json already exists",
-            file=sys.stderr,
-        )
-        return
+        print(f"- file {args.out_dir}/{scenario['name']}.json already exists")
+        sys.exit(1)
 
     with open(f"{args.out_dir}/{scenario['name']}.json", "w") as f:
         json.dump(scenario, f, indent=2)
 
-    print(f"Scenario generated and saved to {args.out_dir}/{scenario['name']}.json")
-    print(
-        f"- requires {(sum(map(lambda x: sum(x['funds']), scenario['wallets'])) / 100_000_000):0.8f} BTC"
-    )
+    print(f"- saved to {args.out_dir}/{scenario['name']}.json")
 
 
 if __name__ == "__main__":
