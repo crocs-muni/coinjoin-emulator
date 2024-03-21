@@ -24,6 +24,7 @@ SCENARIO_TEMPLATE = {
 
 
 def setup_parser(parser: argparse.ArgumentParser):
+    parser.add_argument("--name", type=str, help="scenario name")
     parser.add_argument(
         "--client-count", type=int, default=10, help="number of wallets"
     )
@@ -76,7 +77,7 @@ def setup_parser(parser: argparse.ArgumentParser):
 def handler(args):
     print("Generating scenario...")
     scenario = copy.deepcopy(SCENARIO_TEMPLATE)
-    scenario["name"] = (
+    scenario["name"] = args.name or (
         f"{args.distribution}-static-{args.client_count}-{args.utxo_count}utxo"
     )
 
