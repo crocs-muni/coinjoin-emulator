@@ -8,7 +8,6 @@ WALLET_NAME = "wallet"
 
 class WasabiClientBase:
     def __init__(
-<<<<<<< HEAD
         self, 
         host="localhost", 
         port=37128, 
@@ -17,9 +16,6 @@ class WasabiClientBase:
         proxy="",
         version=VersionsEnum["2.0.4"],
         skip_rounds=[]
-=======
-        self, host="localhost", port=37128, name="wasabi-client", delay=0, proxy="", version=VersionsEnum["2.0.4"]
->>>>>>> 9cfdac633c524f97fd0742417aed579a6023cbdb
     ):
         self.host = host
         self.port = port
@@ -28,10 +24,7 @@ class WasabiClientBase:
         self.active = False
         self.proxy = proxy
         self.version = version
-<<<<<<< HEAD
         self.skip_rounds = skip_rounds or list()
-=======
->>>>>>> 9cfdac633c524f97fd0742417aed579a6023cbdb
 
     def _rpc(self, request, wallet=True, timeout=5, repeat=1):
         request["jsonrpc"] = "2.0"
