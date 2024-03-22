@@ -163,7 +163,8 @@ def start_infrastructure():
         wasabi_client_distributor_ip if args.proxy else args.control_ip,
         port=37128 if args.proxy else wasabi_client_distributor_ports[37128],
         name="wasabi-client-distributor",
-        delay = 0
+        delay = 0,
+        skip_rounds=[]
     )
     if not distributor.wait_wallet(timeout=60):
         print(f"- could not start distributor (application timeout)")
@@ -194,7 +195,8 @@ def create_rpc_client(client_version, ip, port, name, delay, skip_rounds):
         name=name,
         delay=delay,
         proxy=args.proxy,
-        version=version
+        version=version,
+        skip_rounds=skip_rounds
     )
 
 def start_client(idx, wallet):
