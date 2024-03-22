@@ -437,11 +437,11 @@ def run():
         fund_clients(invoices)
 
         print("Mixing")
-        rounds = 0
+        round = 0
         initial_block = node.get_block_count()
-        blocks = 0
-        while (SCENARIO["rounds"] == 0 or rounds < SCENARIO["rounds"]) and (
-            SCENARIO["blocks"] == 0 or blocks < SCENARIO["blocks"]
+        block = 0
+        while (SCENARIO["rounds"] == 0 or round < SCENARIO["rounds"]) and (
+            SCENARIO["blocks"] == 0 or block < SCENARIO["blocks"]
         ):
             for _ in range(3):
                 try:
