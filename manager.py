@@ -491,6 +491,10 @@ if __name__ == "__main__":
     build_subparser.add_argument(
         "--force-rebuild", action="store_true", help="force rebuild of images"
     )
+    build_subparser.add_argument("--namespace", type=str, default="coinjoin")
+    build_subparser.add_argument(
+        "--image-prefix", type=str, default="", help="image prefix"
+    )
 
     run_subparser = subparsers.add_parser("run", help="run simulation")
     run_subparser.add_argument(
