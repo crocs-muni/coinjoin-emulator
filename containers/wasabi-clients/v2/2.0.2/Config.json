@@ -1,6 +1,6 @@
 {
     "Network": "RegTest",
-    "RegTestBackendUri": "http://${ADDR_WASABI_BACKEND}:37127/",
+    "RegTestBackendUriV3": "http://${ADDR_WASABI_BACKEND}:37127/",
     "UseTor": false,
     "DownloadNewVersion": false,
     "StartLocalBitcoinCoreOnStartup": false,
