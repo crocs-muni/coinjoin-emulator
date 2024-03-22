@@ -27,6 +27,7 @@ SCENARIO = {
     "rounds": 10,  # the number of coinjoins after which the simulation stops (0 for no limit)
     "blocks": 0,  # the number of mined blocks after which the simulation stops (0 for no limit)
     "default_version": "2.0.4",
+    "distributor_version": "2.0.4",
     "wallets": [
         {"funds": [200000, 50000], "delay": 0},
         {"funds": [3000000], "delay": 0,
@@ -145,7 +146,7 @@ def start_infrastructure():
     coordinator.wait_ready()
     print("- started wasabi-backend")
 
-    distributor_version = SCENARIO.get("default_version", "2.0.4")
+    distributor_version = SCENARIO.get("distributor_version", "2.0.4")
     wasabi_client_distributor_ip, wasabi_client_distributor_ports = driver.run(
         "wasabi-client-distributor",
         f"{args.image_prefix}wasabi-client-{distributor_version}",
@@ -558,6 +559,7 @@ if __name__ == "__main__":
             SCENARIO.update(json.load(f))
 
     versions.add(SCENARIO["default_version"])
+    versions.add(SCENARIO["distributor_version"])
     for wallet in SCENARIO["wallets"]:
         if "version" in wallet:
             versions.add(wallet["version"])
