@@ -163,12 +163,8 @@ def start_infrastructure():
         wasabi_client_distributor_ip if args.proxy else args.control_ip,
         port=37128 if args.proxy else wasabi_client_distributor_ports[37128],
         name="wasabi-client-distributor",
-<<<<<<< HEAD
         delay = 0,
         skip_rounds=[]
-=======
-        delay = 0
->>>>>>> 9cfdac633c524f97fd0742417aed579a6023cbdb
     )
     if not distributor.wait_wallet(timeout=60):
         print(f"- could not start distributor (application timeout)")
@@ -184,11 +180,7 @@ def fund_distributor(btc_amount):
         sleep(1)
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
 
-<<<<<<< HEAD
 def create_rpc_client(client_version, ip, port, name, delay, skip_rounds):
-=======
-def create_rpc_client(client_version, ip, port, name, delay):
->>>>>>> 9cfdac633c524f97fd0742417aed579a6023cbdb
     version = VersionsEnum[client_version]
     if version < VersionsEnum['2.0.0']:
         client_class = WasabiClientV1
@@ -203,16 +195,13 @@ def create_rpc_client(client_version, ip, port, name, delay):
         name=name,
         delay=delay,
         proxy=args.proxy,
-<<<<<<< HEAD
         version=version,
         skip_rounds=skip_rounds
-=======
-        version=version
->>>>>>> 9cfdac633c524f97fd0742417aed579a6023cbdb
     )
 
 def start_client(idx, wallet):
     client_version = wallet.get("version", SCENARIO["default_version"])
+    enum_version = VersionsEnum[client_version]
 
     sleep(random.random() * 3)
     name = f"wasabi-client-{idx:03}"
@@ -226,25 +215,20 @@ def start_client(idx, wallet):
                 or coordinator.internal_ip,
             },
             ports={37128: 37129 + idx},
+            cpu= 0.3 if enum_version < VersionsEnum['2.0.4'] else 0.1,
+            memory= 1024 if enum_version < VersionsEnum['2.0.4'] else 768
         )
     except Exception as e:
         print(f"- could not start {name} ({e})")
         return None
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 9cfdac633c524f97fd0742417aed579a6023cbdb
     client = create_rpc_client(
         client_version,
         ip if args.proxy else args.control_ip,
         37128 if args.proxy else manager_ports[37128],
         f"wasabi-client-{idx:03}",
         wallet.get("delay", 0),
-<<<<<<< HEAD
         wallet.get("skip_rounds", list())
-=======
->>>>>>> 9cfdac633c524f97fd0742417aed579a6023cbdb
     )
 
     start = time()
@@ -362,11 +346,6 @@ def update_coinjoins(block=0, round=0):
     with get_paralelism_pool() as pool:
         pool.starmap(stop_coinjoin, ((client, block, round) for client in stop))
 
-<<<<<<< HEAD
-=======
-    with get_paralelism_pool() as pool:
-        pool.starmap(start_coinjoin, ((client, delay) for client in ready))
->>>>>>> 9cfdac633c524f97fd0742417aed579a6023cbdb
 
     # client object are modified in different processes, so we need to update them manually
     for client in start:
