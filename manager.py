@@ -30,8 +30,7 @@ SCENARIO = {
     "distributor_version": "2.0.4",
     "wallets": [
         {"funds": [200000, 50000], "delay": 0},
-        {"funds": [3000000], "delay": 0,
-         "version": "2.0.3"},
+        {"funds": [3000000], "delay": 0},
         {"funds": [1000000, 500000], "delay": 0},
         {"funds": [1000000, 500000], "delay": 0},
         {"funds": [1000000, 500000], "delay": 0},

@@ -9,6 +9,8 @@ SCENARIO_TEMPLATE = {
     "name": "template",
     "rounds": 0,
     "blocks": 120,
+    "default_version": "2.0.4",
+    "distributor_version": "2.0.4",
     "backend": {
         "MaxInputCountByRound": 400,
         "MinInputCountByRoundMultiplier": 0.01,
