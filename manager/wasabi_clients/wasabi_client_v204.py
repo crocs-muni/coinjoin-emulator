@@ -2,7 +2,7 @@ from .wasabi_client_base import WasabiClientBase, WALLET_NAME
 from time import sleep, time
 from .client_versions_enum import VersionsEnum
 
-class WasabiClientV2New(WasabiClientBase):
+class WasabiClientV204(WasabiClientBase):
 
     def __init__(self, 
                  host="localhost", 

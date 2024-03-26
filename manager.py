@@ -18,8 +18,8 @@ import platform
 
 from manager.wasabi_clients.client_versions_enum import VersionsEnum
 from manager.wasabi_clients.wasabi_client_v1 import WasabiClientV1
-from manager.wasabi_clients.wasabi_client_v2_old import WasabiClientV2Old
-from manager.wasabi_clients.wasabi_client_v2_new import WasabiClientV2New
+from manager.wasabi_clients.wasabi_client_v2 import WasabiClientV2
+from manager.wasabi_clients.wasabi_client_v204 import WasabiClientV204
 
 BTC = 100_000_000
 SCENARIO = {
@@ -158,7 +158,7 @@ def start_infrastructure():
         memory=2048,
     )
     global distributor
-    distributor = create_rpc_client(
+    distributor = init_wasabi_client(
         distributor_version,
         wasabi_client_distributor_ip if args.proxy else args.control_ip,
         port=37128 if args.proxy else wasabi_client_distributor_ports[37128],
@@ -180,14 +180,14 @@ def fund_distributor(btc_amount):
         sleep(1)
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
 
-def create_rpc_client(client_version, ip, port, name, delay, skip_rounds):
+def init_wasabi_client(client_version, ip, port, name, delay, skip_rounds):
     version = VersionsEnum[client_version]
     if version < VersionsEnum['2.0.0']:
         client_class = WasabiClientV1
     elif version >= VersionsEnum['2.0.0'] and version < VersionsEnum['2.0.4']:
-        client_class = WasabiClientV2Old
+        client_class = WasabiClientV2
     else:
-        client_class = WasabiClientV2New
+        client_class = WasabiClientV204
     
     return client_class(
         host=ip,
@@ -215,14 +215,14 @@ def start_client(idx, wallet):
                 or coordinator.internal_ip,
             },
             ports={37128: 37129 + idx},
-            cpu= 0.3 if enum_version < VersionsEnum['2.0.4'] else 0.1,
-            memory= 1024 if enum_version < VersionsEnum['2.0.4'] else 768
+            cpu= (0.3 if enum_version < VersionsEnum['2.0.4'] else 0.1),
+            memory= (1024 if enum_version < VersionsEnum['2.0.4'] else 768)
         )
     except Exception as e:
         print(f"- could not start {name} ({e})")
         return None
 
-    client = create_rpc_client(
+    client = init_wasabi_client(
         client_version,
         ip if args.proxy else args.control_ip,
         37128 if args.proxy else manager_ports[37128],

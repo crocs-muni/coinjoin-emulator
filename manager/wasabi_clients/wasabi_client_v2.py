@@ -3,7 +3,7 @@ from time import sleep, time
 from .client_versions_enum import VersionsEnum
 
 
-class WasabiClientV2Old(WasabiClientBase):
+class WasabiClientV2(WasabiClientBase):
 
     def __init__(self, 
                  host="localhost", 
