@@ -145,7 +145,7 @@ def start_infrastructure():
     coordinator.wait_ready()
     print("- started wasabi-backend")
 
-    distributor_version = SCENARIO.get("distributor_version", "2.0.4")
+    distributor_version = SCENARIO.get("distributor_version", SCENARIO["default_version"])
     wasabi_client_distributor_ip, wasabi_client_distributor_ports = driver.run(
         "wasabi-client-distributor",
         f"{args.image_prefix}wasabi-client-{distributor_version}",
