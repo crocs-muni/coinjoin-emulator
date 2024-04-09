@@ -16,7 +16,7 @@ index c471dcb95..36cf2329e 100644
  
  #if RELEASE
 -			SetMinimumLevel(logLevel ??= LogLevel.Info);
-+			SetMinimumLevel(logLevel ??= LogLevel.Debug);
++			SetMinimumLevel(logLevel ??= LogLevel.Trace);
  			SetModes(LogMode.Console, LogMode.File);
  
  #else
