@@ -78,7 +78,7 @@ def prepare_image(name, path = None):
 def prepare_client_images():
     for version in versions:
         major_version = version[0]
-        name = f"wasabi-client-{version}"
+        name = f"wasabi-client:{version}"
         path = f"./containers/wasabi-clients/v{major_version}/{version}"
         prepare_image(name, path)
 
@@ -147,7 +147,7 @@ def start_infrastructure():
     distributor_version = SCENARIO.get("distributor_version", SCENARIO["default_version"])
     wasabi_client_distributor_ip, wasabi_client_distributor_ports = driver.run(
         "wasabi-client-distributor",
-        f"{args.image_prefix}wasabi-client-{distributor_version}",
+        f"{args.image_prefix}wasabi-client:{distributor_version}",
         env={
             "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
             "ADDR_WASABI_BACKEND": args.wasabi_backend_ip or coordinator.internal_ip,
@@ -207,7 +207,7 @@ def start_client(idx, wallet):
     try:
         ip, manager_ports = driver.run(
             name,
-            f"{args.image_prefix}wasabi-client-{client_version}",
+            f"{args.image_prefix}wasabi-client:{client_version}",
             env={
                 "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
                 "ADDR_WASABI_BACKEND": args.wasabi_backend_ip
@@ -470,7 +470,7 @@ def run():
         stop_coinjoins()
         if not args.no_logs:
             store_logs()
-        driver.cleanup(args.image_prefix, versions)
+        driver.cleanup(args.image_prefix)
 
 
 if __name__ == "__main__":
@@ -571,7 +571,7 @@ if __name__ == "__main__":
         case "build":
             prepare_images()
         case "clean":
-            driver.cleanup(args.image_prefix, versions)
+            driver.cleanup(args.image_prefix)
         case "run":
             run()
         case _:
