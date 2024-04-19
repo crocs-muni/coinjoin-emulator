@@ -4,6 +4,7 @@ import os
 import sys
 import numpy.random
 import copy
+import math
 
 SCENARIO_TEMPLATE = {
     "name": "template",
@@ -32,7 +33,7 @@ def setup_parser(parser: argparse.ArgumentParser):
         "--distribution",
         type=str,
         default="pareto",
-        choices=["uniformsum", "paretosum", "uniform", "pareto"],
+        choices=["uniformsum", "paretosum", "uniform", "pareto", "lognorm"],
         help="fund distribution strategy",
     )
     parser.add_argument(
@@ -150,6 +151,10 @@ def handler(args):
             case "paretosum":
                 dist = numpy.random.pareto(1.16, args.utxo_count)
                 funds = map(round, list(dist / sum(dist) * 100_000_000))
+            case "lognorm":
+                # parameters estimated from mainnet data of Wasabi 2.0 coinjoins
+                dist = numpy.random.lognormal(14.1, 2.29, args.utxo_count)
+                funds = map(round, dist // 10)
             case _:
                 print("- invalid distribution")
                 sys.exit(1)
