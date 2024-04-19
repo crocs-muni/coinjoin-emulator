@@ -554,7 +554,8 @@ if __name__ == "__main__":
             SCENARIO.update(json.load(f))
 
     versions.add(SCENARIO["default_version"])
-    versions.add(SCENARIO["distributor_version"])
+    if "distributor_version" in SCENARIO:
+        versions.add(SCENARIO["distributor_version"])
     for wallet in SCENARIO["wallets"]:
         if "version" in wallet:
             versions.add(wallet["version"])
