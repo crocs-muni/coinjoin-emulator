@@ -86,15 +86,12 @@ class PodmanDriver(Driver):
         )
 
     def cleanup(self, image_prefix=""):
-        containers = list(
-            filter(
-                lambda x: x.attrs["Config"]["Image"]
-                in (
-                    f"{image_prefix}btc-node",
-                    f"{image_prefix}wasabi-backend",
-                    f"{image_prefix}wasabi-client",
-                ),
-                docker.from_env().containers.list(),
-            )
-        )
+        containers = []
+        for container in docker.from_env().containers.list():
+            if any(
+                x in container.attrs["Config"]["Image"]
+                for x in ("btc-node", "wasabi-backend", "wasabi-client")
+            ):
+                containers.append(container)
+                
         self.stop_many(map(lambda x: x.name, containers))

@@ -88,17 +88,15 @@ class DockerDriver(Driver):
         self.client.containers.get(name).put_archive(os.path.dirname(dst_path), fo)
 
     def cleanup(self, image_prefix=""):
-        containers = list(
-            filter(
-                lambda x: x.attrs["Config"]["Image"]
-                in (
-                    f"{image_prefix}btc-node",
-                    f"{image_prefix}wasabi-backend",
-                    f"{image_prefix}wasabi-client",
-                ),
-                self.client.containers.list(),
-            )
-        )
+        
+        containers = []
+        for container in self.client.containers.list():
+            if any(
+                x in container.attrs["Config"]["Image"]
+                for x in ("btc-node", "wasabi-backend", "wasabi-client")
+            ):
+                containers.append(container)
+
         self.stop_many(map(lambda x: x.name, containers))
         networks = self.client.networks.list(self._namespace)
         if networks:
