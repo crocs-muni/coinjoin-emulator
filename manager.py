@@ -1,5 +1,4 @@
 from manager.btc_node import BtcNode
-from manager.wasabi_client import WasabiClient
 from manager.wasabi_backend import WasabiBackend
 from manager import utils
 import manager.commands.genscen
@@ -48,12 +47,6 @@ coordinator = None
 distributor = None
 clients = []
 versions = set()
-
-def get_paralelism_pool():
-    if platform.system() == "Windows":
-        return multiprocessing.pool.ThreadPool()
-    else:
-        return multiprocessing.Pool()
 
 
 def prepare_image(name, path = None):
@@ -242,7 +235,7 @@ def start_client(idx, wallet):
 
 def start_clients(wallets):
     print("Starting clients")
-    with get_paralelism_pool() as pool:
+    with multiprocessing.pool.ThreadPool() as pool:
         new_clients = pool.starmap(start_client, enumerate(wallets, start=len(clients)))
 
         for _ in range(3):
@@ -308,7 +301,7 @@ def fund_clients(invoices):
         else:
             print("- created funding transaction")
 
-    with get_paralelism_pool() as pool:
+    with multiprocessing.pool.ThreadPool() as pool:
         pool.starmap(wait_funds, invoices)
 
 
@@ -339,10 +332,10 @@ def update_coinjoins(block=0, round=0):
     stop = list(filter(stop_condition, clients))
 
 
-    with get_paralelism_pool() as pool:
+    with multiprocessing.pool.ThreadPool() as pool:
         pool.starmap(start_coinjoin, ((client, block, round) for client in start))
 
-    with get_paralelism_pool() as pool:
+    with multiprocessing.pool.ThreadPool() as pool:
         pool.starmap(stop_coinjoin, ((client, block, round) for client in stop))
 
 
@@ -414,7 +407,7 @@ def store_logs():
     except:
         print(f"- could not store backend logs")
 
-    with get_paralelism_pool() as pool:
+    with multiprocessing.pool.ThreadPool() as pool:
         pool.starmap(store_client_logs, ((client, data_path) for client in clients))
 
     shutil.make_archive(experiment_path, "zip", *os.path.split(experiment_path))
