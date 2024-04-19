@@ -9,7 +9,7 @@ import math
 SCENARIO_TEMPLATE = {
     "name": "template",
     "rounds": 0,
-    "blocks": 120,
+    "blocks": 0,
     "backend": {
         "MaxInputCountByRound": 400,
         "MinInputCountByRoundMultiplier": 0.01,
@@ -60,7 +60,7 @@ def setup_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--stop-block",
         type=int,
-        default=120,
+        default=0,
         help="terminate after N blocks, 0 for no limit",
     )
     parser.add_argument(
