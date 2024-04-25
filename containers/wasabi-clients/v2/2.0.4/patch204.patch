@@ -1,0 +1,170 @@
+diff --git a/WalletWasabi.Daemon/Rpc/WasabiJsonRpcService.cs b/WalletWasabi.Daemon/Rpc/WasabiJsonRpcService.cs
+index e500c9c54..5edbd9a5a 100644
+--- a/WalletWasabi.Daemon/Rpc/WasabiJsonRpcService.cs
++++ b/WalletWasabi.Daemon/Rpc/WasabiJsonRpcService.cs
+@@ -80,11 +80,11 @@ public class WasabiJsonRpcService : IJsonRpcService
+ 	}
+ 
+ 	[JsonRpcMethod("createwallet", initializable: false)]
+-	public object CreateWallet(string walletName, string password)
++	public object CreateWallet(string walletName, string password, int annonScoreTarget=5)
+ 	{
+ 		var walletGenerator = new WalletGenerator(Global.WalletManager.WalletDirectories.WalletsDir, Global.Network);
+ 		walletGenerator.TipHeight = Global.BitcoinStore.SmartHeaderChain.TipHeight;
+-		var (keyManager, mnemonic) = walletGenerator.GenerateWallet(walletName, password);
++		var (keyManager, mnemonic) = walletGenerator.GenerateWallet(walletName, password, annonScoreTarget: annonScoreTarget);
+ 		Global.WalletManager.AddWallet(keyManager);
+ 		return mnemonic.ToString();
+ 	}
+diff --git a/WalletWasabi/Blockchain/Keys/KeyManager.cs b/WalletWasabi/Blockchain/Keys/KeyManager.cs
+index 60d1c2f63..fa6e67577 100644
+--- a/WalletWasabi/Blockchain/Keys/KeyManager.cs
++++ b/WalletWasabi/Blockchain/Keys/KeyManager.cs
+@@ -42,7 +42,7 @@ public class KeyManager
+ 	};
+ 
+ 	[JsonConstructor]
+-	public KeyManager(BitcoinEncryptedSecretNoEC? encryptedSecret, byte[]? chainCode, HDFingerprint? masterFingerprint, ExtPubKey extPubKey, ExtPubKey? taprootExtPubKey, bool skipSynchronization, int? minGapLimit, BlockchainState blockchainState, string? filePath = null, KeyPath? segwitAccountKeyPath = null, KeyPath? taprootAccountKeyPath = null)
++	public KeyManager(BitcoinEncryptedSecretNoEC? encryptedSecret, byte[]? chainCode, HDFingerprint? masterFingerprint, ExtPubKey extPubKey, ExtPubKey? taprootExtPubKey, bool skipSynchronization, int? minGapLimit, BlockchainState blockchainState, string? filePath = null, KeyPath? segwitAccountKeyPath = null, KeyPath? taprootAccountKeyPath = null, int annonScoreTarget = 5)
+ 	{
+ 		EncryptedSecret = encryptedSecret;
+ 		ChainCode = chainCode;
+@@ -65,12 +65,15 @@ public class KeyManager
+ 			TaprootExternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(0), TaprootAccountKeyPath.Derive(0), MinGapLimit);
+ 			TaprootInternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(1), TaprootAccountKeyPath.Derive(1), MinGapLimit);
+ 		}
++
++		AnonScoreTarget = annonScoreTarget;
++
+ 		SetFilePath(filePath);
+ 
+ 		ToFile();
+ 	}
+ 
+-	public KeyManager(BitcoinEncryptedSecretNoEC encryptedSecret, byte[] chainCode, string password, Network network)
++	public KeyManager(BitcoinEncryptedSecretNoEC encryptedSecret, byte[] chainCode, string password, Network network, int annonScoreTarget = 5)
+ 	{
+ 		BlockchainState = new BlockchainState(network);
+ 
+@@ -94,6 +97,8 @@ public class KeyManager
+ 		SegwitInternalKeyGenerator = new HdPubKeyGenerator(SegwitExtPubKey.Derive(1), SegwitAccountKeyPath.Derive(1), MinGapLimit);
+ 		TaprootExternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(0), TaprootAccountKeyPath.Derive(0), MinGapLimit);
+ 		TaprootInternalKeyGenerator = new HdPubKeyGenerator(TaprootExtPubKey.Derive(1), TaprootAccountKeyPath.Derive(1), MinGapLimit);
++
++		AnonScoreTarget = annonScoreTarget;
+ 	}
+ 
+ 	[OnDeserialized]
+@@ -233,13 +238,13 @@ public class KeyManager
+ 
+ 	public string WalletName => string.IsNullOrWhiteSpace(FilePath) ? "" : Path.GetFileNameWithoutExtension(FilePath);
+ 
+-	public static KeyManager CreateNew(out Mnemonic mnemonic, string password, Network network, string? filePath = null)
++	public static KeyManager CreateNew(out Mnemonic mnemonic, string password, Network network, string? filePath = null, int annonScoreTarget = 5)
+ 	{
+ 		mnemonic = new Mnemonic(Wordlist.English, WordCount.Twelve);
+-		return CreateNew(mnemonic, password, network, filePath);
++		return CreateNew(mnemonic, password, network, filePath, annonScoreTarget);
+ 	}
+ 
+-	public static KeyManager CreateNew(Mnemonic mnemonic, string password, Network network, string? filePath = null)
++	public static KeyManager CreateNew(Mnemonic mnemonic, string password, Network network, string? filePath = null, int annonScoreTarget=5)
+ 	{
+ 		password ??= "";
+ 
+@@ -254,7 +259,7 @@ public class KeyManager
+ 		KeyPath taprootAccountKeyPath = GetAccountKeyPath(network, ScriptPubKeyType.TaprootBIP86);
+ 		ExtPubKey taprootExtPubKey = extKey.Derive(taprootAccountKeyPath).Neuter();
+ 
+-		return new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, segwitExtPubKey, taprootExtPubKey, skipSynchronization: true, AbsoluteMinGapLimit, blockchainState, filePath, segwitAccountKeyPath, taprootAccountKeyPath);
++		return new KeyManager(encryptedSecret, extKey.ChainCode, masterFingerprint, segwitExtPubKey, taprootExtPubKey, skipSynchronization: true, AbsoluteMinGapLimit, blockchainState, filePath, segwitAccountKeyPath, taprootAccountKeyPath, annonScoreTarget);
+ 	}
+ 
+ 	public static KeyManager CreateNewWatchOnly(ExtPubKey segwitExtPubKey, ExtPubKey taprootExtPubKey, string? filePath = null, int? minGapLimit = null)
+diff --git a/WalletWasabi/Blockchain/Keys/WalletGenerator.cs b/WalletWasabi/Blockchain/Keys/WalletGenerator.cs
+index 6e7220e97..6e97e869f 100644
+--- a/WalletWasabi/Blockchain/Keys/WalletGenerator.cs
++++ b/WalletWasabi/Blockchain/Keys/WalletGenerator.cs
+@@ -1,6 +1,7 @@
+ using NBitcoin;
+ using System.IO;
+ using System.Linq;
++using WalletWasabi.Logging;
+ using WalletWasabi.Models;
+ using WalletWasabi.Userfacing;
+ 
+@@ -25,7 +26,7 @@ public class WalletGenerator
+ 	public Network Network { get; private set; }
+ 	public uint TipHeight { get; set; }
+ 
+-	public (KeyManager, Mnemonic) GenerateWallet(string walletName, string password, Mnemonic? mnemonic = null)
++	public (KeyManager, Mnemonic) GenerateWallet(string walletName, string password, Mnemonic? mnemonic = null, int annonScoreTarget = 5)
+ 	{
+ 		string walletFilePath = GetWalletFilePath(walletName, WalletsDir);
+ 
+@@ -33,11 +34,12 @@ public class WalletGenerator
+ 		PasswordHelper.Guard(password);
+ 
+ 		var km = mnemonic is null
+-			? KeyManager.CreateNew(out mnemonic, password, Network)
++			? KeyManager.CreateNew(out mnemonic, password, Network, annonScoreTarget: annonScoreTarget)
+ 			: KeyManager.CreateNew(mnemonic, password, Network);
+ 		km.AutoCoinJoin = true;
+ 		km.SetBestHeights(height: new Height(TipHeight), turboSyncHeight: new Height(TipHeight));
+ 		km.SetFilePath(walletFilePath);
++		Logger.LogInfo($"Created wallet with AnonimityScoreTarget: {km.AnonScoreTarget}");
+ 		return (km, mnemonic);
+ 	}
+ 
+diff --git a/WalletWasabi/Logging/Logger.cs b/WalletWasabi/Logging/Logger.cs
+index eb096be1e..7e73d7371 100644
+--- a/WalletWasabi/Logging/Logger.cs
++++ b/WalletWasabi/Logging/Logger.cs
+@@ -27,7 +27,7 @@ public static class Logger
+ 
+ 	private static int LoggingFailedCount = 0;
+ 
+-	private static LogLevel MinimumLevel { get; set; } = LogLevel.Critical;
++	private static LogLevel MinimumLevel { get; set; } = LogLevel.Debug;
+ 
+ 	private static HashSet<LogMode> Modes { get; } = new HashSet<LogMode>();
+ 
+@@ -46,7 +46,7 @@ public static class Logger
+ 	/// Gets or sets the maximum log file size in KB.
+ 	/// </summary>
+ 	/// <remarks>Default value is approximately 10 MB. If set to <c>0</c>, then there is no maximum log file size.</remarks>
+-	private static long MaximumLogFileSize { get; set; } = 10_000;
++	private static long MaximumLogFileSize { get; set; } = 0;
+ 
+ 	#endregion PropertiesAndMembers
+ 
+@@ -68,14 +68,14 @@ public static class Logger
+ 		SetFilePath(filePath);
+ 
+ #if RELEASE
+-		SetMinimumLevel(logLevel ??= LogLevel.Info);
++		SetMinimumLevel(logLevel ??= LogLevel.Debug);
+ 		SetModes(LogMode.Console, LogMode.File);
+ 
+ #else
+ 		SetMinimumLevel(logLevel ??= LogLevel.Debug);
+ 		SetModes(LogMode.Debug, LogMode.Console, LogMode.File);
+ #endif
+-		MaximumLogFileSize = MinimumLevel == LogLevel.Trace ? 0 : 10_000;
++		MaximumLogFileSize = 0;
+ 	}
+ 
+ 	public static void SetMinimumLevel(LogLevel level) => MinimumLevel = level;
+diff --git a/WalletWasabi/WabiSabi/Client/CoinJoinCoinSelector.cs b/WalletWasabi/WabiSabi/Client/CoinJoinCoinSelector.cs
+index ef2c85a8c..aa8b4e5c5 100644
+--- a/WalletWasabi/WabiSabi/Client/CoinJoinCoinSelector.cs
++++ b/WalletWasabi/WabiSabi/Client/CoinJoinCoinSelector.cs
+@@ -33,6 +33,8 @@ public class CoinJoinCoinSelector
+ 		SemiPrivateThreshold = semiPrivateThreshold;
+ 
+ 		Generator = generator ?? new(MaxInputsRegistrableByWallet, SecureRandom.Instance);
++
++		Logger.LogInfo($"Created coin selector with anon score target {anonScoreTarget}");
+ 	}
+ 
+ 	public bool ConsolidationMode { get; }
