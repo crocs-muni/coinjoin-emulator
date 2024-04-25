@@ -22,11 +22,11 @@ class WasabiClientV2(WasabiClientBase):
         }
         self._rpc(request, False, timeout=timeout, repeat=repeat)
 
-    def wait_wallet(self, timeout=None):
+    def wait_wallet(self, timeout=None, annon_score_target=None):
         start = time()
         while timeout is None or time() - start < timeout:
             try:
-                self._create_wallet()
+                self._create_wallet(annon_score_target)
             except:
                 pass
 

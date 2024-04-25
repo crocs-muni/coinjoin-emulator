@@ -224,7 +224,13 @@ def start_client(idx, wallet):
     )
 
     start = time()
-    if not client.wait_wallet(timeout=60):
+
+    annon_score_target = wallet.get("annon_score_target", None)
+    if annon_score_target is not None and enum_version != VersionsEnum['2.0.4']:
+        annon_score_target = None
+        print("Anon Score Target is ignored for current wallet as it is curently supported only for version 2.0.4")
+
+    if not client.wait_wallet(timeout=60, annon_score_target=annon_score_target):
         print(
             f"- could not start {name} (application timeout {time() - start} seconds)"
         )

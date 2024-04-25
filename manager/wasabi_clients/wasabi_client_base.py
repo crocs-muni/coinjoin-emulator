@@ -56,11 +56,13 @@ class WasabiClientBase:
         }
         return self._rpc(request, wallet=False)
 
-    def _create_wallet(self):
+    def _create_wallet(self, annon_score_target=None):
         request = {
             "method": "createwallet",
             "params": [WALLET_NAME, ""],
         }
+        if annon_score_target is not None:
+            request["params"].append(annon_score_target)
         return self._rpc(request)
 
     def get_new_address(self):
@@ -76,11 +78,11 @@ class WasabiClientBase:
         }
         return self._rpc(request, timeout=timeout)["balance"]
 
-    def wait_wallet(self, timeout=None):
+    def wait_wallet(self, timeout=None, annon_score_target=None):
         start = time()
         while timeout is None or time() - start < timeout:
             try:
-                self._create_wallet()
+                self._create_wallet(annon_score_target)
             except:
                 pass
 
