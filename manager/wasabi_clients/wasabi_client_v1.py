@@ -22,7 +22,7 @@ class WasabiClientV1(WasabiClientBase):
         }
         self._rpc(request, False, timeout=timeout, repeat=repeat)
 
-    def wait_wallet(self, timeout=None):
+    def wait_wallet(self, timeout=None, annon_score_target=None):
         start = time()
         while timeout is None or time() - start < timeout:
             try:
@@ -41,7 +41,8 @@ class WasabiClientV1(WasabiClientBase):
         return False
     
     def list_coins(self):
-        raise Exception("This method is not yet implemented in the wallet wasabi, need to be patched.")
+        #raise Exception("This method is not yet implemented in the wallet wasabi, need to be patched.")
+        return {}
 
     def enqueue(self, coins):
         request = {
@@ -53,11 +54,15 @@ class WasabiClientV1(WasabiClientBase):
         }
         return self._rpc(request, repeat=3)
 
-    def enqueue_all(self):
-        coins = self.list_unspent_coins()
-        confirmed_coins = filter(lambda x: x["confirmed"], coins)
+    def enqueue_all(self, only_confirmed=False):
+        coins = []
 
-        coins = list(map(lambda x: {"transactionid": x["txid"], "index": x["index"]}, confirmed_coins))
+        coins = self.list_unspent_coins()
+        if only_confirmed:
+            coins = filter(lambda x: x["confirmed"], coins)
+        coins = list(map(lambda x: {"transactionid": x["txid"], "index": x["index"]}, coins))
+        
+
         return self.enqueue(coins)
 
     def dequeue(self, coins):
@@ -70,11 +75,13 @@ class WasabiClientV1(WasabiClientBase):
         }
         return self._rpc(request, repeat=3)
     
-    def dequeue_all(self):
+    def dequeue_all(self, only_confirmed=False):
         coins = self.list_unspent_coins()
-        confirmed_coins = filter(lambda x: x["confirmed"], coins)
+        
+        if only_confirmed:
+            coins = filter(lambda x: x["confirmed"], coins)
 
-        coins = list(map(lambda x: {"transactionid": x["txid"], "index": x["index"]}, confirmed_coins))
+        coins = list(map(lambda x: {"transactionid": x["txid"], "index": x["index"]}, coins))
         return self.dequeue(coins)
 
     def start_coinjoin(self):
@@ -83,7 +90,13 @@ class WasabiClientV1(WasabiClientBase):
         return response
     
     def stop_coinjoin(self):
-        response = self.dequeue_all()
+        for i in range(30):
+            try:
+                response = self.dequeue_all()
+                break
+            except:
+                sleep(2)
+                pass
         self.active = False
         return response
 
