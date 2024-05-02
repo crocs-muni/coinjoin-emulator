@@ -127,6 +127,23 @@ def start_infrastructure():
         "/home/wasabi/.walletwasabi/backend/WabiSabiConfig.json",
     )
 
+    ww1_config = {}
+    with open("./containers/wasabi-backend/CcjRoundConfig.json", "r") as config_file_2:
+        ww1_config = json.load(config_file_2)
+
+    ww1_config.update(SCENARIO.get("ww1_config", {}))
+
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+        ccj_scenario_file = tmp_file.name
+        tmp_file.write(json.dumps(ww1_config, indent=2).encode())
+
+    driver.upload(
+        "wasabi-backend",
+        ccj_scenario_file,
+        "/home/wasabi/.walletwasabi/backend/CcjRoundConfig.json",
+    )
+    
+
     global coordinator
     coordinator = WasabiBackend(
         host=wasabi_backend_ip if args.proxy else args.control_ip,
