@@ -2,9 +2,9 @@ import argparse
 import json
 import os
 import sys
+from typing import Optional
 import numpy.random
 import copy
-import math
 
 SCENARIO_TEMPLATE = {
     "name": "template",
@@ -66,20 +66,25 @@ def setup_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--skip-rounds",
         type=str,
-        default="none",
-        help="skip rounds ('none' for none, 'random(fraction)' for randomly sampled fraction of rounds, or comma-separated list of rounds to skip)",
+        required=False,
+        help="skip rounds ('random(fraction)' for randomly sampled fraction of rounds, or comma-separated list of rounds to skip)",
     )
     parser.add_argument("--force", action="store_true", help="overwrite existing files")
     parser.add_argument(
         "--out-dir", type=str, default="scenarios", help="output directory"
     )
-
     parser.add_argument(
-        "--distributor-version", 
-        type=str, 
-        default="none", 
-        help="version of the distibutor wallet, 'none' for using default client version"
-        )
+        "--distributor-version",
+        type=str,
+        required=False,
+        help="version of the distibutor wallet",
+    )
+    parser.add_argument(
+        "--client-version",
+        type=str,
+        required=False,
+        help="version of the client wallet",
+    )
 
 
 def handler(args):
@@ -96,13 +101,16 @@ def handler(args):
     scenario["rounds"] = args.stop_round
     scenario["blocks"] = args.stop_block
 
-    if args.distributor_version != "none":
+    if args.distributor_version:
         scenario["distributor_version"] = args.distributor_version
+
+    if args.client_version:
+        scenario["default_version"] = args.client_version
 
     delays = [0] * args.client_count
 
     skip_rounds = None
-    if args.skip_rounds != "none":
+    if args.skip_rounds:
         if args.skip_rounds.startswith("random"):
             if args.stop_round == 0:
                 print("- cannot use random skip rounds with no stop round")
