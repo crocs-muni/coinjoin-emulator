@@ -1,0 +1,19 @@
+{
+  "Network": "RegTest",
+  "RegTestBackendUriV3": "http://${ADDR_WASABI_BACKEND}:37127/",
+  "UseTor": false,
+  "StartLocalBitcoinCoreOnStartup": false,
+  "StopLocalBitcoinCoreOnShutdown": true,
+  "RegTestBitcoinP2pEndPoint": "${ADDR_BTC_NODE}:18444",
+  "JsonRpcServerEnabled": true,
+  "JsonRpcUser": "",
+  "JsonRpcPassword": "",
+  "JsonRpcServerPrefixes": [
+		"http://*:37128/"
+  ],
+  "MixUntilAnonymitySet": "PrivacyLevelStrong",
+  "PrivacyLevelSome": 2,
+  "PrivacyLevelFine": 21,
+  "PrivacyLevelStrong": 50,
+  "DustThreshold": "0.00005"
+}

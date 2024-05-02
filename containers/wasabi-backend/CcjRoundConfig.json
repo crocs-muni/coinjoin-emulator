@@ -1,0 +1,18 @@
+ {
+  "Denomination": "0.10",
+  "ConfirmationTarget": 144,
+  "ConfirmationTargetReductionRate": 0.7,
+  "CoordinatorFeePercent": 0.003,
+  "AnonymitySet": 5,
+  "InputRegistrationTimeout": 604800,
+  "ConnectionConfirmationTimeout": 60,
+  "OutputRegistrationTimeout": 60,
+  "SigningTimeout": 60,
+  "DosSeverity": 1,
+  "DosDurationHours": 730,
+  "DosNoteBeforeBan": true,
+  "MaximumMixingLevelCount": 11,
+  "CoordinatorExtPubKey": "xpub6BgAZqHhxw6pgEi2F38w5RBqctqCEoVWqcMdrn1epQZceKHtn8f8zHBduM3fwYQEKEGUf4efD6qRPc9wvDF4neoc6JjDbHNiaHbs3we5qL3",
+  "CoordinatorExtPubKeyCurrentDepth": 0,
+  "IsCoinVerifierEnabledForWW1": false
+ }
