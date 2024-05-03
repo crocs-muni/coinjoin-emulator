@@ -1,6 +1,3 @@
 [submodule "wasabi-backend/wasabi-src"]
 	path = containers/wasabi-backend/wasabi-src
 	url = https://github.com/zkSNACKs/WalletWasabi.git
-[submodule "wasabi-client/wasabi-src"]
-	path = containers/wasabi-client/wasabi-src
-	url = https://github.com/zkSNACKs/WalletWasabi.git
