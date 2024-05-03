@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2023 Antonín Dufka
+Copyright (c) 2023 CRoCS
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
