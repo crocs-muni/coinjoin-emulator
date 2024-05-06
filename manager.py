@@ -14,7 +14,6 @@ import tempfile
 import multiprocessing
 import multiprocessing.pool
 
-from manager.wasabi_clients.client_versions_enum import VersionsEnum
 from manager.wasabi_clients.wasabi_client_v1 import WasabiClientV1
 from manager.wasabi_clients.wasabi_client_v2 import WasabiClientV2
 from manager.wasabi_clients.wasabi_client_v204 import WasabiClientV204
@@ -177,11 +176,10 @@ def fund_distributor(btc_amount):
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
 
 
-def init_wasabi_client(client_version, ip, port, name, delay, skip_rounds):
-    version = VersionsEnum[client_version]
-    if version < VersionsEnum["2.0.0"]:
+def init_wasabi_client(version, ip, port, name, delay, skip_rounds):
+    if version < "2.0.0":
         client_class = WasabiClientV1
-    elif version >= VersionsEnum["2.0.0"] and version < VersionsEnum["2.0.4"]:
+    elif version >= "2.0.0" and version < "2.0.4":
         client_class = WasabiClientV2
     else:
         client_class = WasabiClientV204
@@ -198,30 +196,29 @@ def init_wasabi_client(client_version, ip, port, name, delay, skip_rounds):
 
 
 def start_client(idx, wallet):
-    client_version = wallet.get("version", SCENARIO["default_version"])
-    enum_version = VersionsEnum[client_version]
+    version = wallet.get("version", SCENARIO["default_version"])
 
     sleep(random.random() * 3)
     name = f"wasabi-client-{idx:03}"
     try:
         ip, manager_ports = driver.run(
             name,
-            f"{args.image_prefix}wasabi-client:{client_version}",
+            f"{args.image_prefix}wasabi-client:{version}",
             env={
                 "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
                 "ADDR_WASABI_BACKEND": args.wasabi_backend_ip
                 or coordinator.internal_ip,
             },
             ports={37128: 37129 + idx},
-            cpu=(0.3 if enum_version < VersionsEnum["2.0.4"] else 0.1),
-            memory=(1024 if enum_version < VersionsEnum["2.0.4"] else 768),
+            cpu=(0.3 if version < "2.0.4" else 0.1),
+            memory=(1024 if version < "2.0.4" else 768),
         )
     except Exception as e:
         print(f"- could not start {name} ({e})")
         return None
 
     client = init_wasabi_client(
-        client_version,
+        version,
         ip if args.proxy else args.control_ip,
         37128 if args.proxy else manager_ports[37128],
         f"wasabi-client-{idx:03}",

@@ -2,7 +2,6 @@ import json
 import random
 import requests
 from time import sleep, time
-from .client_versions_enum import VersionsEnum
 
 WALLET_NAME = "wallet"
 
@@ -15,7 +14,7 @@ class WasabiClientBase:
         name="wasabi-client",
         delay=0,
         proxy="",
-        version=VersionsEnum["2.0.4"],
+        version="2.0.4",
         skip_rounds=[],
     ):
         self.host = host
@@ -31,7 +30,7 @@ class WasabiClientBase:
         request["jsonrpc"] = "2.0"
         request["id"] = "1"
 
-        if self.version < VersionsEnum["2.0.4"]:
+        if self.version < "2.0.4":
             wallet = False
 
         for _ in range(repeat):
