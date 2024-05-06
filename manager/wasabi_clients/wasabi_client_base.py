@@ -1,4 +1,5 @@
 import json
+import random
 import requests
 from time import sleep, time
 from .client_versions_enum import VersionsEnum
@@ -8,14 +9,14 @@ WALLET_NAME = "wallet"
 
 class WasabiClientBase:
     def __init__(
-        self, 
-        host="localhost", 
-        port=37128, 
+        self,
+        host="localhost",
+        port=37128,
         name="wasabi-client",
         delay=0,
         proxy="",
         version=VersionsEnum["2.0.4"],
-        skip_rounds=[]
+        skip_rounds=[],
     ):
         self.host = host
         self.port = port
@@ -100,15 +101,26 @@ class WasabiClientBase:
         return self._rpc(request)
 
     def send(self, invoices):
-        coins = self._list_unspent_coins()
-        coins = map(lambda x: {"transactionid": x["txid"], "index": x["index"]}, coins)
-        payments = map(lambda x: {"sendto": x[0], "amount": x[1]}, invoices)
+        unspent_coins = self._list_unspent_coins()
+        random.shuffle(unspent_coins)
+
+        cost = sum(map(lambda x: x[1], invoices))
+        coins = []
+        for coin in unspent_coins:
+            coins.append({"transactionid": coin["txid"], "index": coin["index"]})
+            cost -= coin["amount"]
+            if cost < 0:
+                break
+        else:
+            raise Exception("Not enough BTC")
+
+        payments = list(map(lambda x: {"sendto": x[0], "amount": x[1]}, invoices))
 
         request = {
             "method": "send",
             "params": {
-                "payments": list(payments),
-                "coins": list(coins),
+                "payments": payments,
+                "coins": coins,
                 "feeTarget": 2,
                 "password": "",
             },
