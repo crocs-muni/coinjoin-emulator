@@ -13,13 +13,13 @@ import shutil
 import tempfile
 import multiprocessing
 import multiprocessing.pool
-import platform
 
 from manager.wasabi_clients.client_versions_enum import VersionsEnum
 from manager.wasabi_clients.wasabi_client_v1 import WasabiClientV1
 from manager.wasabi_clients.wasabi_client_v2 import WasabiClientV2
 from manager.wasabi_clients.wasabi_client_v204 import WasabiClientV204
 
+BATCH_SIZE = 1
 BTC = 100_000_000
 SCENARIO = {
     "name": "default",
@@ -49,7 +49,7 @@ clients = []
 versions = set()
 
 
-def prepare_image(name, path = None):
+def prepare_image(name, path=None):
     prefixed_name = args.image_prefix + name
     if driver.has_image(prefixed_name):
         if args.force_rebuild:
@@ -68,12 +68,14 @@ def prepare_image(name, path = None):
         driver.build(name, f"./containers/{name}" if path is None else path)
         print(f"- image built {prefixed_name}")
 
+
 def prepare_client_images():
     for version in versions:
         major_version = version[0]
         name = f"wasabi-client:{version}"
         path = f"./containers/wasabi-clients/v{major_version}/{version}"
         prepare_image(name, path)
+
 
 def prepare_images():
     print("Preparing images")
@@ -137,7 +139,9 @@ def start_infrastructure():
     coordinator.wait_ready()
     print("- started wasabi-backend")
 
-    distributor_version = SCENARIO.get("distributor_version", SCENARIO["default_version"])
+    distributor_version = SCENARIO.get(
+        "distributor_version", SCENARIO["default_version"]
+    )
     wasabi_client_distributor_ip, wasabi_client_distributor_ports = driver.run(
         "wasabi-client-distributor",
         f"{args.image_prefix}wasabi-client:{distributor_version}",
@@ -155,8 +159,8 @@ def start_infrastructure():
         wasabi_client_distributor_ip if args.proxy else args.control_ip,
         port=37128 if args.proxy else wasabi_client_distributor_ports[37128],
         name="wasabi-client-distributor",
-        delay = 0,
-        skip_rounds=[]
+        delay=0,
+        skip_rounds=[],
     )
     if not distributor.wait_wallet(timeout=60):
         print(f"- could not start distributor (application timeout)")
@@ -172,15 +176,16 @@ def fund_distributor(btc_amount):
         sleep(1)
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
 
+
 def init_wasabi_client(client_version, ip, port, name, delay, skip_rounds):
     version = VersionsEnum[client_version]
-    if version < VersionsEnum['2.0.0']:
+    if version < VersionsEnum["2.0.0"]:
         client_class = WasabiClientV1
-    elif version >= VersionsEnum['2.0.0'] and version < VersionsEnum['2.0.4']:
+    elif version >= VersionsEnum["2.0.0"] and version < VersionsEnum["2.0.4"]:
         client_class = WasabiClientV2
     else:
         client_class = WasabiClientV204
-    
+
     return client_class(
         host=ip,
         port=port,
@@ -188,8 +193,9 @@ def init_wasabi_client(client_version, ip, port, name, delay, skip_rounds):
         delay=delay,
         proxy=args.proxy,
         version=version,
-        skip_rounds=skip_rounds
+        skip_rounds=skip_rounds,
     )
+
 
 def start_client(idx, wallet):
     client_version = wallet.get("version", SCENARIO["default_version"])
@@ -207,8 +213,8 @@ def start_client(idx, wallet):
                 or coordinator.internal_ip,
             },
             ports={37128: 37129 + idx},
-            cpu= (0.3 if enum_version < VersionsEnum['2.0.4'] else 0.1),
-            memory= (1024 if enum_version < VersionsEnum['2.0.4'] else 768)
+            cpu=(0.3 if enum_version < VersionsEnum["2.0.4"] else 0.1),
+            memory=(1024 if enum_version < VersionsEnum["2.0.4"] else 768),
         )
     except Exception as e:
         print(f"- could not start {name} ({e})")
@@ -220,7 +226,7 @@ def start_client(idx, wallet):
         37128 if args.proxy else manager_ports[37128],
         f"wasabi-client-{idx:03}",
         wallet.get("delay", 0),
-        wallet.get("skip_rounds", list())
+        wallet.get("skip_rounds", list()),
     )
 
     start = time()
@@ -290,16 +296,17 @@ def wait_funds(client, funds):
 
 def fund_clients(invoices):
     print("Funding clients")
-    for batch in utils.batched(invoices, 50):
-        addressed_invoices = []
-        for client, values in batch:
-            for value in values:
-                addressed_invoices.append((client.get_new_address(), value))
-        if str(distributor.send(addressed_invoices)) == "timeout":
+    print(f"- creating client invoices")
+    addressed_invoices = []
+    for client, values in invoices:
+        for value in values:
+            addressed_invoices.append((client.get_new_address(), value))
+    print(f"- paying invoices (shuffled, batch size {BATCH_SIZE})")
+    random.shuffle(addressed_invoices)
+    for batch in utils.batched(addressed_invoices, BATCH_SIZE):
+        if str(distributor.send(batch)) == "timeout":
             print("- funding timeout")
             raise Exception("Distributor timeout")
-        else:
-            print("- created funding transaction")
 
     with multiprocessing.pool.ThreadPool() as pool:
         pool.starmap(wait_funds, invoices)
@@ -331,13 +338,11 @@ def update_coinjoins(block=0, round=0):
     start = list(filter(start_condition, clients))
     stop = list(filter(stop_condition, clients))
 
-
     with multiprocessing.pool.ThreadPool() as pool:
         pool.starmap(start_coinjoin, ((client, block, round) for client in start))
 
     with multiprocessing.pool.ThreadPool() as pool:
         pool.starmap(stop_coinjoin, ((client, block, round) for client in stop))
-
 
     # client object are modified in different processes, so we need to update them manually
     for client in start:
@@ -559,7 +564,6 @@ if __name__ == "__main__":
     for wallet in SCENARIO["wallets"]:
         if "version" in wallet:
             versions.add(wallet["version"])
-
 
     match args.command:
         case "build":
