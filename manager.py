@@ -438,11 +438,12 @@ def run():
                     )
                     break
                 except Exception as e:
-                    print(f"- could not get rounds ({e})")
+                    print(f"- could not get rounds".ljust(60), end="\r")
+                    print(f"Round exception: {e}", file=sys.stderr)
                     round = 0
 
             update_coinjoins(block := node.get_block_count() - initial_block, round)
-            print(f"- coinjoin rounds: {round} (block {block})", end="\r")
+            print(f"- coinjoin rounds: {round} (block {block})".ljust(60), end="\r")
             sleep(1)
         print()
         print(f"- limit reached")
@@ -450,7 +451,7 @@ def run():
         print()
         print("KeyboardInterrupt received")
     except Exception as e:
-        print(f"Exception: {e}", file=sys.stderr)
+        print(f"Terminating exception: {e}", file=sys.stderr)
     finally:
         stop_coinjoins()
         if not args.no_logs:
