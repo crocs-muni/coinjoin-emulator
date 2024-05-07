@@ -1,5 +1,6 @@
 from manager.btc_node import BtcNode
 from manager.wasabi_backend import WasabiBackend
+from manager.wasabi_clients import WasabiClient
 from manager import utils
 import manager.commands.genscen
 from time import sleep, time
@@ -13,10 +14,6 @@ import shutil
 import tempfile
 import multiprocessing
 import multiprocessing.pool
-
-from manager.wasabi_clients.wasabi_client_v1 import WasabiClientV1
-from manager.wasabi_clients.wasabi_client_v2 import WasabiClientV2
-from manager.wasabi_clients.wasabi_client_v204 import WasabiClientV204
 
 BATCH_SIZE = 1
 BTC = 100_000_000
@@ -177,14 +174,7 @@ def fund_distributor(btc_amount):
 
 
 def init_wasabi_client(version, ip, port, name, delay, skip_rounds):
-    if version < "2.0.0":
-        client_class = WasabiClientV1
-    elif version >= "2.0.0" and version < "2.0.4":
-        client_class = WasabiClientV2
-    else:
-        client_class = WasabiClientV204
-
-    return client_class(
+    return WasabiClient(version)(
         host=ip,
         port=port,
         name=name,
