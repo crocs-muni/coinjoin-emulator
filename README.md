@@ -23,6 +23,8 @@ Scenario definition files can be passed to the simulation script using the `--sc
     "blocks": 120,
     "default_version": "2.0.4",
     "distributor_version": "2.0.4",
+    "default_anon_score_target": 5,
+    "default_redcoin_isolation": false,
     "backend": {
         "MaxInputCountByRound": 200,
         "MinInputCountByRoundMultiplier": 0.2,
@@ -32,7 +34,9 @@ Scenario definition files can be passed to the simulation script using the `--sc
         {"funds": [200000, 50000]},
         {"funds": [3000000], "delay": 10},
         {"funds": [1000000, 50000], "delay": 1, "skip_rounds": [3, 5, 6]},
-        {"funds": [1000000, 50000], "delay": 1, "skip_rounds": [3, 5, 6], "version": "2.0.3"},
+        {"funds": [200000], "version": "2.0.3"},
+        {"funds": [4000000], "anon_score_target": "25"},
+        {"funds": [4000000], "redcoin_isolation": true},
         ...
     ],
 }
@@ -44,12 +48,16 @@ The fields are as follows:
 - `blocks` field is the number of mined blocks after which the simulation terminates. If set to 0, the simulation will run indefinitely.
 - `default_version` field is the string representing of the version of wallet wasabi used for clients without the version specification.
 - `distributor_version` field is the string representing of the version of wallet wasabi used for the distributor client.
+- `default_anon_score_target` field sets the default value of target anon score.
+- `default_redcoin_isolation` field sets the default option for redcoin isolation.
 - `backend` field is the configuration for the `wasabi-backend` container used in the simulation. The provided fields update the defaults.
 - `wallets` field is a list of wallet configurations. Each wallet configuration is a dictionary with the following fields:
   - `funds` is a list of funds in satoshis that the wallet will use for coinjoins.
   - `delay` is the number of blocks the wallet will wait before joining coinjoins.
   - `skip_rounds` is a list of coinjoin rounds during which a wallet should not participate.
   - `version` is the string representation of wallet wasabi version used for client running this wallet.
+  - `anon_score_target` is the target anon score of the wallet.
+  - `redcoin_isolation` is a boolean value indicating whether the wallet should use redcoin isolation.
 
 
 ## Advanced usage
