@@ -85,6 +85,18 @@ def setup_parser(parser: argparse.ArgumentParser):
         required=False,
         help="version of the client wallet",
     )
+    parser.add_argument(
+        "--anon-score-target",
+        type=int,
+        required=False,
+        help="default anon score target used for wallets",
+    )
+    parser.add_argument(
+        "--redcoin-isolation",
+        type=bool,
+        required=False,
+        help="default redcoin isolation setting used for wallets",
+    )
 
 
 def handler(args):
@@ -106,6 +118,12 @@ def handler(args):
 
     if args.client_version:
         scenario["default_version"] = args.client_version
+
+    if args.anon_score_target:
+        scenario["default_anon_score_target"] = args.anon_score_target
+
+    if args.redcoin_isolation:
+        scenario["default_redcoin_isolation"] = args.redcoin_isolation
 
     delays = [0] * args.client_count
 

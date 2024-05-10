@@ -8,9 +8,9 @@ RUN apt update && apt install -y patch
 RUN mkdir -p /wasabi-src
 WORKDIR /wasabi-src
 RUN git clone https://github.com/zkSNACKs/WalletWasabi.git .
-RUN git checkout 6c71c61
+RUN git checkout v2.0.3
 
-COPY logger203.patch /wasabi-src/logger.patch
+COPY 203.patch /wasabi-src/logger.patch
 RUN patch --binary -p1 < ./logger.patch
 
 WORKDIR /wasabi-src/WalletWasabi.Fluent.Desktop

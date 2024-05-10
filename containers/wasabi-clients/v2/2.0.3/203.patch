@@ -1,0 +1,77 @@
+diff --git a/WalletWasabi/Blockchain/Keys/KeyManager.cs b/WalletWasabi/Blockchain/Keys/KeyManager.cs
+index 5a2c622a2..ac77d9b7c 100644
+--- a/WalletWasabi/Blockchain/Keys/KeyManager.cs
++++ b/WalletWasabi/Blockchain/Keys/KeyManager.cs
+@@ -69,6 +69,19 @@ public class KeyManager
+ 		}
+ 		SetFilePath(filePath);
+ 
++		if (int.TryParse(Environment.GetEnvironmentVariable("WASABI_ANON_SCORE_TARGET"), out int score))
++		{
++			AnonScoreTarget = score;
++			Logger.LogInfo($"Creating wallet with changed score target: {score}");
++		}
++
++		if (bool.TryParse(Environment.GetEnvironmentVariable("WASABI_REDCOIN_ISOLATION"), out bool isolation))
++		{
++			RedCoinIsolation = isolation;
++			Logger.LogInfo($"Creating wallet with changed redcoin isolation: {isolation}");
++		}
++
++
+ 		ToFile();
+ 	}
+ 
+diff --git a/WalletWasabi/Logging/Logger.cs b/WalletWasabi/Logging/Logger.cs
+index c471dcb95..5fb8d1060 100644
+--- a/WalletWasabi/Logging/Logger.cs
++++ b/WalletWasabi/Logging/Logger.cs
+@@ -27,7 +27,7 @@ public static class Logger
+ 
+ 	private static int LoggingFailedCount = 0;
+ 
+-	private static LogLevel MinimumLevel { get; set; } = LogLevel.Critical;
++	private static LogLevel MinimumLevel { get; set; } = LogLevel.Debug;
+ 
+ 	private static HashSet<LogMode> Modes { get; } = new HashSet<LogMode>();
+ 
+@@ -46,7 +46,7 @@ public static class Logger
+ 	/// Gets or sets the maximum log file size in KB.
+ 	/// </summary>
+ 	/// <remarks>Default value is approximately 10 MB. If set to <c>0</c>, then there is no maximum log file size.</remarks>
+-	private static long MaximumLogFileSize { get; set; } = 10_000;
++	private static long MaximumLogFileSize { get; set; } = 0;
+ 
+ 	#endregion PropertiesAndMembers
+ 
+@@ -68,14 +68,14 @@ public static class Logger
+ 		SetFilePath(filePath);
+ 
+ #if RELEASE
+-			SetMinimumLevel(logLevel ??= LogLevel.Info);
++			SetMinimumLevel(logLevel ??= LogLevel.Debug);
+ 			SetModes(LogMode.Console, LogMode.File);
+ 
+ #else
+ 		SetMinimumLevel(logLevel ??= LogLevel.Debug);
+ 		SetModes(LogMode.Debug, LogMode.Console, LogMode.File);
+ #endif
+-		MaximumLogFileSize = MinimumLevel == LogLevel.Trace ? 0 : 10_000;
++		MaximumLogFileSize = 0;
+ 	}
+ 
+ 	public static void SetMinimumLevel(LogLevel level) => MinimumLevel = level;
+diff --git a/WalletWasabi/WabiSabi/Client/CoinJoinClient.cs b/WalletWasabi/WabiSabi/Client/CoinJoinClient.cs
+index aa42d5f74..34b446773 100644
+--- a/WalletWasabi/WabiSabi/Client/CoinJoinClient.cs
++++ b/WalletWasabi/WabiSabi/Client/CoinJoinClient.cs
+@@ -663,6 +663,9 @@ public class CoinJoinClient
+ 		WasabiRandom rnd)
+ 		where TCoin : class, ISmartCoin, IEquatable<TCoin>
+ 	{
++
++		Logger.LogInfo($"Selecting coins with anon score target {anonScoreTarget}");
++
+ 		if (semiPrivateThreshold < 0)
+ 		{
+ 			throw new ArgumentException("Cannot be negative", nameof(semiPrivateThreshold));
