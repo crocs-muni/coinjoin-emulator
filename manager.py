@@ -187,14 +187,22 @@ def init_wasabi_client(version, ip, port, name, delay, skip_rounds):
 
 def start_client(idx, wallet):
     version = wallet.get("version", SCENARIO["default_version"])
+    
+    if "anon_score_target" in wallet:
+        anon_score_target = wallet["anon_score_target"]
+    else:
+        anon_score_target = SCENARIO.get("default_anon_score_target", None)
 
-
-    anon_score_target = wallet.get("anon_score_target", None)
     if anon_score_target is not None and version < '2.0.3':
         anon_score_target = None
         print(f"Anon Score Target is ignored for wallet {idx} as it is curently supported only for version 2.0.3 and newer")
 
-    redcoin_isolation = wallet.get("redcoin_isolation", None)
+
+    if "redcoin_isolation" in wallet:
+        redcoin_isolation = wallet["redcoin_isolation"]
+    else:
+        redcoin_isolation = SCENARIO.get("default_redcoin_isolation", None)
+
     if redcoin_isolation is not None and version < '2.0.3':
         redcoin_isolation = None
         print(f"Redcoin isolation is ignored for wallet {idx} as it is curently supported only for version 2.0.3 and newer")
