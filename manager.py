@@ -23,8 +23,8 @@ SCENARIO = {
     "blocks": 0,  # the number of mined blocks after which the simulation stops (0 for no limit)
     "default_version": "2.0.4",
     "wallets": [
-        {"funds": [200000, 50000], "delay": 0},
-        {"funds": [3000000], "delay": 0},
+        {"funds": [200000, 50000], "delay": 0, "anon_score_target": 7},
+        {"funds": [3000000], "delay": 0, "redcoin_isolation": True},
         {"funds": [1000000, 500000], "delay": 0},
         {"funds": [1000000, 500000], "delay": 0},
         {"funds": [1000000, 500000], "delay": 0},
@@ -188,6 +188,17 @@ def init_wasabi_client(version, ip, port, name, delay, skip_rounds):
 def start_client(idx, wallet):
     version = wallet.get("version", SCENARIO["default_version"])
 
+
+    anon_score_target = wallet.get("anon_score_target", None)
+    if anon_score_target is not None and enum_version < VersionsEnum['2.0.3']:
+        anon_score_target = None
+        print(f"Anon Score Target is ignored for wallet {idx} as it is curently supported only for version 2.0.3 and newer")
+
+    redcoin_isolation = wallet.get("redcoin_isolation", None)
+    if redcoin_isolation is not None and enum_version < VersionsEnum['2.0.3']:
+        redcoin_isolation = None
+        print(f"Redcoin isolation is ignored for wallet {idx} as it is curently supported only for version 2.0.3 and newer")
+
     sleep(random.random() * 3)
     name = f"wasabi-client-{idx:03}"
     try:
@@ -198,6 +209,8 @@ def start_client(idx, wallet):
                 "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
                 "ADDR_WASABI_BACKEND": args.wasabi_backend_ip
                 or coordinator.internal_ip,
+                "WASABI_ANON_SCORE_TARGET": anon_score_target,
+                "WASABI_REDCOIN_ISOLATION": redcoin_isolation
             },
             ports={37128: 37129 + idx},
             cpu=(0.3 if version < "2.0.4" else 0.1),
