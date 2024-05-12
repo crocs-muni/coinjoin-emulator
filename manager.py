@@ -321,9 +321,23 @@ def fund_clients(invoices):
     random.shuffle(addressed_invoices)
     try:
         for batch in utils.batched(addressed_invoices, BATCH_SIZE):
-            if str(distributor.send(batch)) == "timeout":
-                print("- funding timeout")
-                raise Exception("Funding timeout")
+            for _ in range(3):
+                try:
+                    result = distributor.send(batch)
+                    if str(result) == "timeout":
+                        print("- transaction timeout")
+                        continue
+                    break
+                except Exception as e:
+                    # https://github.com/zkSNACKs/WalletWasabi/issues/12764
+                    if "Bad Request" in str(e):
+                        print("- transaction error (bad request)")
+                    else:
+                        print(f"- transaction error ({e})")
+            else:
+                print("- funding failed")
+                raise Exception("Funding failed")
+
     except Exception as e:
         print("- funding failed")
         raise e
