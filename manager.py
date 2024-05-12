@@ -187,25 +187,28 @@ def init_wasabi_client(version, ip, port, name, delay, skip_rounds):
 
 def start_client(idx, wallet):
     version = wallet.get("version", SCENARIO["default_version"])
-    
+
     if "anon_score_target" in wallet:
         anon_score_target = wallet["anon_score_target"]
     else:
         anon_score_target = SCENARIO.get("default_anon_score_target", None)
 
-    if anon_score_target is not None and version < '2.0.3':
+    if anon_score_target is not None and version < "2.0.3":
         anon_score_target = None
-        print(f"Anon Score Target is ignored for wallet {idx} as it is curently supported only for version 2.0.3 and newer")
-
+        print(
+            f"Anon Score Target is ignored for wallet {idx} as it is curently supported only for version 2.0.3 and newer"
+        )
 
     if "redcoin_isolation" in wallet:
         redcoin_isolation = wallet["redcoin_isolation"]
     else:
         redcoin_isolation = SCENARIO.get("default_redcoin_isolation", None)
 
-    if redcoin_isolation is not None and version < '2.0.3':
+    if redcoin_isolation is not None and version < "2.0.3":
         redcoin_isolation = None
-        print(f"Redcoin isolation is ignored for wallet {idx} as it is curently supported only for version 2.0.3 and newer")
+        print(
+            f"Redcoin isolation is ignored for wallet {idx} as it is curently supported only for version 2.0.3 and newer"
+        )
 
     sleep(random.random() * 3)
     name = f"wasabi-client-{idx:03}"
@@ -218,7 +221,7 @@ def start_client(idx, wallet):
                 "ADDR_WASABI_BACKEND": args.wasabi_backend_ip
                 or coordinator.internal_ip,
                 "WASABI_ANON_SCORE_TARGET": anon_score_target,
-                "WASABI_REDCOIN_ISOLATION": redcoin_isolation
+                "WASABI_REDCOIN_ISOLATION": redcoin_isolation,
             },
             ports={37128: 37129 + idx},
             cpu=(0.3 if version < "2.0.4" else 0.1),
@@ -420,8 +423,9 @@ def store_logs():
     except:
         print(f"- could not store backend logs")
 
-    with multiprocessing.pool.ThreadPool() as pool:
-        pool.starmap(store_client_logs, ((client, data_path) for client in clients))
+    # TODO parallelize (driver cannot be simply passed to new threads)
+    for client in clients:
+        store_client_logs(client, data_path)
 
     shutil.make_archive(experiment_path, "zip", *os.path.split(experiment_path))
     print("- zip archive created")
