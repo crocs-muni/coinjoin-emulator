@@ -169,7 +169,10 @@ def start_infrastructure():
 def fund_distributor(btc_amount):
     print("Funding distributor")
     for _ in range(DISTRIBUTOR_UTXOS):
-        node.fund_address(distributor.get_new_address(), math.ceil(btc_amount * BTC / DISTRIBUTOR_UTXOS) // BTC)
+        node.fund_address(
+            distributor.get_new_address(),
+            math.ceil(btc_amount * BTC / DISTRIBUTOR_UTXOS) // BTC,
+        )
     while (balance := distributor.get_balance()) < btc_amount * BTC:
         sleep(1)
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
@@ -316,10 +319,14 @@ def fund_clients(invoices):
             addressed_invoices.append((client.get_new_address(), value))
     print(f"- paying invoices (shuffled, batch size {BATCH_SIZE})")
     random.shuffle(addressed_invoices)
-    for batch in utils.batched(addressed_invoices, BATCH_SIZE):
-        if str(distributor.send(batch)) == "timeout":
-            print("- funding timeout")
-            raise Exception("Distributor timeout")
+    try:
+        for batch in utils.batched(addressed_invoices, BATCH_SIZE):
+            if str(distributor.send(batch)) == "timeout":
+                print("- funding timeout")
+                raise Exception("Funding timeout")
+    except Exception as e:
+        print("- funding failed")
+        raise e
 
     with multiprocessing.pool.ThreadPool() as pool:
         pool.starmap(wait_funds, invoices)
