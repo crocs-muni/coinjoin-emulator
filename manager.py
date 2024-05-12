@@ -14,8 +14,10 @@ import shutil
 import tempfile
 import multiprocessing
 import multiprocessing.pool
+import math
 
-BATCH_SIZE = 1
+DISTRIBUTOR_UTXOS = 20
+BATCH_SIZE = 5
 BTC = 100_000_000
 SCENARIO = {
     "name": "default",
@@ -166,8 +168,8 @@ def start_infrastructure():
 
 def fund_distributor(btc_amount):
     print("Funding distributor")
-    for _ in range(4):
-        node.fund_address(distributor.get_new_address(), btc_amount / 4)
+    for _ in range(DISTRIBUTOR_UTXOS):
+        node.fund_address(distributor.get_new_address(), math.ceil(btc_amount * BTC / DISTRIBUTOR_UTXOS) // BTC)
     while (balance := distributor.get_balance()) < btc_amount * BTC:
         sleep(1)
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
