@@ -225,7 +225,9 @@ def start_client(idx, wallet):
                 "ADDR_BTC_NODE": args.btc_node_ip or node.internal_ip,
                 "ADDR_WASABI_BACKEND": args.wasabi_backend_ip
                 or coordinator.internal_ip,
-                "WASABI_ANON_SCORE_TARGET": anon_score_target,
+                "WASABI_ANON_SCORE_TARGET": (
+                    str(anon_score_target) if anon_score_target else None
+                ),
                 "WASABI_REDCOIN_ISOLATION": redcoin_isolation,
             },
             ports={37128: 37129 + idx},
