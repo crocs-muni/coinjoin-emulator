@@ -2,7 +2,6 @@ import argparse
 import json
 import os
 import sys
-from typing import Optional
 import numpy.random
 import copy
 
@@ -143,7 +142,7 @@ def handler(args):
                     sys.exit(1)
             print(f"- skipping {fraction * 100:.2f}% of rounds")
 
-            skip_rounds = lambda: sorted(
+            skip_rounds = lambda _: sorted(
                 map(
                     int,
                     numpy.random.choice(
@@ -155,12 +154,16 @@ def handler(args):
             )
         else:
             try:
-                skip_rounds = lambda: sorted(map(int, args.skip_rounds.split(",")))
+                skip_rounds = lambda idx: (
+                    sorted(map(int, args.skip_rounds.split(",")))
+                    if idx < args.client_count // 2
+                    else []
+                )
             except ValueError:
                 print("- invalid skip rounds list")
                 sys.exit(1)
 
-    for delay in delays:
+    for idx, delay in enumerate(delays):
         wallet = dict()
         wallet["delay"] = delay
 
@@ -187,7 +190,7 @@ def handler(args):
         wallet["funds"] = list(funds)
 
         if skip_rounds:
-            wallet["skip_rounds"] = skip_rounds()
+            wallet["skip_rounds"] = skip_rounds(idx)
 
         scenario["wallets"].append(wallet)
 
