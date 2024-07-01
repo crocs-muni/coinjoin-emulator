@@ -31,8 +31,7 @@ def setup_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--distribution",
         type=str,
-        default="pareto",
-        choices=["uniformsum", "paretosum", "uniform", "pareto", "lognorm"],
+        default="lognorm",
         help="fund distribution strategy",
     )
     parser.add_argument(
@@ -66,7 +65,7 @@ def setup_parser(parser: argparse.ArgumentParser):
         "--skip-rounds",
         type=str,
         required=False,
-        help="skip rounds ('random(fraction)' for randomly sampled fraction of rounds, or comma-separated list of rounds to skip)",
+        help="skip rounds ('random[fraction]' for randomly sampled fraction of rounds, or comma-separated list of rounds to skip)",
     )
     parser.add_argument("--force", action="store_true", help="overwrite existing files")
     parser.add_argument(
@@ -136,7 +135,7 @@ def handler(args):
             fraction = 2 / 3
             if args.skip_rounds != "random":
                 try:
-                    fraction = float(args.skip_rounds.split("(")[1].split(")")[0])
+                    fraction = float(args.skip_rounds.split("[")[1].split("]")[0])
                 except IndexError:
                     print("- random skip rounds fraction parsing failed")
                     sys.exit(1)
@@ -167,22 +166,34 @@ def handler(args):
         wallet = dict()
         wallet["delay"] = delay
 
-        match args.distribution:
+        dist_name = args.distribution.split("[")[0]
+        dist_params = None
+        if "[" in args.distribution:
+            dist_params = map(
+                float, args.distribution.split("[")[1].split("]")[0].split(",")
+            )
+
+        match dist_name:
             case "uniform":
-                dist = numpy.random.uniform(0.0, 1.0, args.utxo_count)
+                dist_params = dist_params or [0.0, 1.0]
+                dist = numpy.random.uniform(*dist_params, args.utxo_count)
                 funds = map(round, dist * 10_000_000)
             case "pareto":
-                dist = numpy.random.pareto(1.16, args.utxo_count)
+                dist_params = dist_params or [1.16]
+                dist = numpy.random.pareto(*dist_params, args.utxo_count)
                 funds = map(round, dist * 1_000_000)
             case "uniformsum":
-                dist = numpy.random.uniform(0.0, 1.0, args.utxo_count)
+                dist_params = dist_params or [0.0, 1.0]
+                dist = numpy.random.uniform(*dist_params, args.utxo_count)
                 funds = map(round, list(dist / sum(dist) * 100_000_000))
             case "paretosum":
-                dist = numpy.random.pareto(1.16, args.utxo_count)
+                dist_params = dist_params or [1.16]
+                dist = numpy.random.pareto(*dist_params, args.utxo_count)
                 funds = map(round, list(dist / sum(dist) * 100_000_000))
             case "lognorm":
                 # parameters estimated from mainnet data of Wasabi 2.0 coinjoins
-                dist = numpy.random.lognormal(14.1, 2.29, args.utxo_count)
+                dist_params = dist_params or [14.1, 2.29]
+                dist = numpy.random.lognormal(*dist_params, args.utxo_count)
                 funds = map(round, dist // 10)
             case _:
                 print("- invalid distribution")
