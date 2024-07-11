@@ -47,6 +47,9 @@ clients = []
 versions = set()
 invoices = {}
 
+current_round = 0
+current_block = 0
+
 
 def prepare_image(name, path=None):
     prefixed_name = args.image_prefix + name
@@ -327,10 +330,10 @@ def prepare_invoices(wallets):
                 value = fund
             elif isinstance(fund, dict):
                 value = fund.get("value", 0)
-                block = fund.get("delay-block", 0)
-                round = fund.get("delay-round", 0)
+                block = fund.get("delay-blocks", 0)
+                round = fund.get("delay-rounds", 0)
             addressed_invoice = (client.get_new_address(), value)
-            if (block, round) not in addressed_invoices:
+            if (block, round) not in invoices:
                 invoices[(block, round)] = [addressed_invoice]
             else:
                 invoices[(block, round)].append(addressed_invoice)
@@ -340,7 +343,9 @@ def prepare_invoices(wallets):
 
 
 def pay_invoices(addressed_invoices):
-    print(f"- paying {len(addressed_invoices)} invoices (batch size {BATCH_SIZE})")
+    print(
+        f"- paying {len(addressed_invoices)} invoices (batch size {BATCH_SIZE}, block {current_block}, round {current_round})"
+    )
     try:
         for batch in utils.batched(addressed_invoices, BATCH_SIZE):
             for _ in range(3):
@@ -365,37 +370,41 @@ def pay_invoices(addressed_invoices):
         raise e
 
 
-def start_coinjoin(client, block, round):
+def start_coinjoin(client):
     client.start_coinjoin()
-    print(f"- started mixing {client.name} (block {block}, round {round})")
+    print(
+        f"- started mixing {client.name} (block {current_block}, round {current_round})"
+    )
 
 
-def stop_coinjoin(client, block, round):
+def stop_coinjoin(client):
     client.stop_coinjoin()
-    print(f"- stopped mixing {client.name} (block {block}, round {round})")
+    print(
+        f"- stopped mixing {client.name} (block {current_block}, round {current_round})"
+    )
 
 
-def update_coinjoins(block=0, round=0):
+def update_coinjoins():
     def start_condition(client):
         if client.active:
             return False
 
-        return client.delay <= block and round not in client.skip_rounds
+        return client.delay <= current_block and current_round not in client.skip_rounds
 
     def stop_condition(client):
         if not client.active:
             return False
 
-        return round in client.skip_rounds
+        return current_round in client.skip_rounds
 
     start = list(filter(start_condition, clients))
     stop = list(filter(stop_condition, clients))
 
     with multiprocessing.pool.ThreadPool() as pool:
-        pool.starmap(start_coinjoin, ((client, block, round) for client in start))
+        pool.starmap(start_coinjoin, ((client,) for client in start))
 
     with multiprocessing.pool.ThreadPool() as pool:
-        pool.starmap(stop_coinjoin, ((client, block, round) for client in stop))
+        pool.starmap(stop_coinjoin, ((client,) for client in stop))
 
     # client object are modified in different processes, so we need to update them manually
     for client in start:
@@ -404,8 +413,12 @@ def update_coinjoins(block=0, round=0):
         client.active = False
 
 
-def update_invoice_payments(block=0, round=0):
-    due = list(filter(lambda x: x[0] <= block and x[1] <= round, invoices.keys()))
+def update_invoice_payments():
+    due = list(
+        filter(
+            lambda x: x[0] <= current_block and x[1] <= current_round, invoices.keys()
+        )
+    )
     for i in due:
         pay_invoices(invoices.pop(i, []))
 
@@ -494,15 +507,15 @@ def run():
         print("- funded")
 
         print("Mixing")
-        round = 0
+        global current_round
+        global current_block
         initial_block = node.get_block_count()
-        block = 0
-        while (SCENARIO["rounds"] == 0 or round < SCENARIO["rounds"]) and (
-            SCENARIO["blocks"] == 0 or block < SCENARIO["blocks"]
+        while (SCENARIO["rounds"] == 0 or current_round < SCENARIO["rounds"]) and (
+            SCENARIO["blocks"] == 0 or current_block < SCENARIO["blocks"]
         ):
             for _ in range(3):
                 try:
-                    round = sum(
+                    current_round = sum(
                         1
                         for _ in driver.peek(
                             "wasabi-backend",
@@ -516,15 +529,18 @@ def run():
 
             for _ in range(3):
                 try:
-                    block = node.get_block_count() - initial_block
+                    current_block = node.get_block_count() - initial_block
                     break
                 except Exception as e:
                     print(f"- could not get blocks".ljust(60), end="\r")
                     print(f"Block exception: {e}", file=sys.stderr)
 
-            update_coinjoins(block, round)
-            update_invoice_payments(block, round)
-            print(f"- coinjoin rounds: {round} (block {block})".ljust(60), end="\r")
+            update_coinjoins()
+            update_invoice_payments()
+            print(
+                f"- coinjoin rounds: {current_round} (block {current_block})".ljust(60),
+                end="\r",
+            )
             sleep(1)
         print()
         print(f"- limit reached")
@@ -623,9 +639,10 @@ if __name__ == "__main__":
             print(f"Unknown driver '{args.driver}'")
             exit(1)
 
-    if "scenario" in args:
-        with open(args.scenario) as f:
-            SCENARIO.update(json.load(f))
+    if args.command == "run":
+        if args.scenario:
+            with open(args.scenario) as f:
+                SCENARIO.update(json.load(f))
 
     versions.add(SCENARIO["default_version"])
     if "distributor_version" in SCENARIO:
