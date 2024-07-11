@@ -45,6 +45,7 @@ coordinator = None
 distributor = None
 clients = []
 versions = set()
+invoices = {}
 
 
 def prepare_image(name, path=None):
@@ -312,15 +313,34 @@ def wait_funds(client, funds):
     print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
 
 
-def fund_clients(invoices):
-    print("Funding clients")
-    print(f"- creating client invoices")
-    addressed_invoices = []
-    for client, values in invoices:
-        for value in values:
-            addressed_invoices.append((client.get_new_address(), value))
-    print(f"- paying invoices (shuffled, batch size {BATCH_SIZE})")
-    random.shuffle(addressed_invoices)
+def prepare_invoices(wallets):
+    client_invoices = [
+        (client, wallet.get("funds", [])) for client, wallet in zip(clients, wallets)
+    ]
+
+    global invoices
+    for client, funds in client_invoices:
+        for fund in funds:
+            block = 0
+            round = 0
+            if isinstance(fund, int):
+                value = fund
+            elif isinstance(fund, dict):
+                value = fund.get("value", 0)
+                block = fund.get("delay-block", 0)
+                round = fund.get("delay-round", 0)
+            addressed_invoice = (client.get_new_address(), value)
+            if (block, round) not in addressed_invoices:
+                invoices[(block, round)] = [addressed_invoice]
+            else:
+                invoices[(block, round)].append(addressed_invoice)
+
+    for addressed_invoices in invoices.values():
+        random.shuffle(addressed_invoices)
+
+
+def pay_invoices(addressed_invoices):
+    print(f"- paying {len(addressed_invoices)} invoices (batch size {BATCH_SIZE})")
     try:
         for batch in utils.batched(addressed_invoices, BATCH_SIZE):
             for _ in range(3):
@@ -337,15 +357,12 @@ def fund_clients(invoices):
                     else:
                         print(f"- transaction error ({e})")
             else:
-                print("- funding failed")
-                raise Exception("Funding failed")
+                print("- invoice payment failed")
+                raise Exception("Invoice payment failed")
 
     except Exception as e:
-        print("- funding failed")
+        print("- invoice payment failed")
         raise e
-
-    with multiprocessing.pool.ThreadPool() as pool:
-        pool.starmap(wait_funds, invoices)
 
 
 def start_coinjoin(client, block, round):
@@ -385,6 +402,12 @@ def update_coinjoins(block=0, round=0):
         client.active = True
     for client in stop:
         client.active = False
+
+
+def update_invoice_payments(block=0, round=0):
+    due = list(filter(lambda x: x[0] <= block and x[1] <= round, invoices.keys()))
+    for i in due:
+        pay_invoices(invoices.pop(i, []))
 
 
 def stop_coinjoins():
@@ -464,11 +487,11 @@ def run():
         start_infrastructure()
         fund_distributor(1000)
         start_clients(SCENARIO["wallets"])
-        invoices = [
-            (client, wallet.get("funds", []))
-            for client, wallet in zip(clients, SCENARIO["wallets"])
-        ]
-        fund_clients(invoices)
+        prepare_invoices(SCENARIO["wallets"])
+        print("Initial funding")
+        pay_invoices(invoices.pop((0, 0), []))
+        sleep(100)
+        print("- funded")
 
         print("Mixing")
         round = 0
@@ -500,6 +523,7 @@ def run():
                     print(f"Block exception: {e}", file=sys.stderr)
 
             update_coinjoins(block, round)
+            update_invoice_payments(block, round)
             print(f"- coinjoin rounds: {round} (block {block})".ljust(60), end="\r")
             sleep(1)
         print()
