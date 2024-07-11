@@ -1,5 +1,6 @@
 urllib3<2
 requests==2.31
+PySocks==1.7.1
 docker==6.1
 podman==4.7
 kubernetes==28.1.0
