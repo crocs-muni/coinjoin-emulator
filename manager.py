@@ -298,25 +298,8 @@ def start_clients(wallets):
     clients.extend(new_clients)
 
 
-def wait_funds(client, funds):
-    sleep(random.random())
-    start = time()
-    balance = 0.0
-    while (balance + 0.001) < sum(funds):
-        balance = client.get_balance(timeout=5)
-        if balance == "timeout":
-            balance = 0.0
-        sleep(1)
-
-        if start - time() > 90:
-            print(
-                f"- funding timeout {client.name} (current balance {balance / BTC:.8f} BTC)"
-            )
-            return
-    print(f"- funded {client.name} (current balance {balance / BTC:.8f} BTC)")
-
-
 def prepare_invoices(wallets):
+    print("Preparing invoices")
     client_invoices = [
         (client, wallet.get("funds", [])) for client, wallet in zip(clients, wallets)
     ]
@@ -340,6 +323,8 @@ def prepare_invoices(wallets):
 
     for addressed_invoices in invoices.values():
         random.shuffle(addressed_invoices)
+
+    print(f"- prepared {sum(map(len, invoices.values()))} invoices")
 
 
 def pay_invoices(addressed_invoices):
@@ -501,12 +486,8 @@ def run():
         fund_distributor(1000)
         start_clients(SCENARIO["wallets"])
         prepare_invoices(SCENARIO["wallets"])
-        print("Initial funding")
-        pay_invoices(invoices.pop((0, 0), []))
-        sleep(100)
-        print("- funded")
 
-        print("Mixing")
+        print("Running simulation")
         global current_round
         global current_block
         initial_block = node.get_block_count()
