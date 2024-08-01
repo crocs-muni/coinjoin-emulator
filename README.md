@@ -34,7 +34,7 @@ Scenario definition files can be passed to the simulation script using the `--sc
         {"funds": [200000, 50000]},
         {"funds": [3000000], "delay": 10},
         {"funds": [1000000, 50000], "delay": 1, "skip_rounds": [3, 5, 6]},
-        {"funds": [100000, {"value": 200000, "delay-rounds": 5}]},
+        {"funds": [100000, {"value": 200000, "delay_rounds": 5}]},
         {"funds": [200000], "version": "2.0.3"},
         {"funds": [4000000], "anon_score_target": "25"},
         {"funds": [3500000], "redcoin_isolation": true},
@@ -55,8 +55,8 @@ The fields are as follows:
 - `wallets` field is a list of wallet configurations. Each wallet configuration is a dictionary with the following fields:
   - `funds` is a list of funds (`int`s or `dict`s) the wallet will use for coinjoins. In case of a dictionary, the following keys are supported:
     - `value` is the amount of funds the wallet will use for coinjoins.
-    - `delay-rounds` is the number of coinjoin rounds the distributor will wait before sending the corresponding funds to the wallet.
-    - `delay-blocks` is the number of blocks the distributor will wait before sending the corresponding funds to the wallet.
+    - `delay_rounds` is the number of coinjoin rounds the distributor will wait before sending the corresponding funds to the wallet.
+    - `delay_blocks` is the number of blocks the distributor will wait before sending the corresponding funds to the wallet.
   - `delay` is the number of blocks the wallet will wait before joining coinjoins.
   - `skip_rounds` is a list of coinjoin rounds during which a wallet should not participate.
   - `version` is the string representation of wallet wasabi version used for client running this wallet.

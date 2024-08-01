@@ -313,8 +313,8 @@ def prepare_invoices(wallets):
                 value = fund
             elif isinstance(fund, dict):
                 value = fund.get("value", 0)
-                block = fund.get("delay-blocks", 0)
-                round = fund.get("delay-rounds", 0)
+                block = fund.get("delay_blocks", 0)
+                round = fund.get("delay_rounds", 0)
             addressed_invoice = (client.get_new_address(), value)
             if (block, round) not in invoices:
                 invoices[(block, round)] = [addressed_invoice]
