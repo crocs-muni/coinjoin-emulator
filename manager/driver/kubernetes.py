@@ -60,6 +60,7 @@ class KubernetesDriver(Driver):
                 "containers": [
                     {
                         "image": image,
+                        "imagePullPolicy": "Always",
                         "name": name,
                         "ports": [
                             {
