@@ -83,10 +83,8 @@ class WasabiClientV1(WasabiClientBase):
 
     def start_coinjoin(self):
         response = self.enqueue_all()
-        self.active = True
         return response
 
     def stop_coinjoin(self):
         response = self.dequeue_all()
-        self.active = False
         return response

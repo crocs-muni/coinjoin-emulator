@@ -21,7 +21,6 @@ class WasabiClientBase:
         self.port = port
         self.name = name
         self.delay = delay
-        self.active = False
         self.proxy = proxy
         self.version = version
         self.skip_rounds = skip_rounds or list()
@@ -131,14 +130,12 @@ class WasabiClientBase:
             "method": "startcoinjoin",
             "params": ["", "True", "True"],
         }
-        self.active = True
         return self._rpc(request, timeout=None)
 
     def stop_coinjoin(self):
         request = {
             "method": "stopcoinjoin",
         }
-        self.active = False
         return self._rpc(request, "wallet")
 
     def list_coins(self):

@@ -356,30 +356,20 @@ def pay_invoices(addressed_invoices):
 
 
 def start_coinjoin(client):
+    sleep(random.random() / 10)
     client.start_coinjoin()
-    print(
-        f"- started mixing {client.name} (block {current_block}, round {current_round})"
-    )
 
 
 def stop_coinjoin(client):
+    sleep(random.random() / 10)
     client.stop_coinjoin()
-    print(
-        f"- stopped mixing {client.name} (block {current_block}, round {current_round})"
-    )
 
 
 def update_coinjoins():
     def start_condition(client):
-        if client.active:
-            return False
-
         return client.delay <= current_block and current_round not in client.skip_rounds
 
     def stop_condition(client):
-        if not client.active:
-            return False
-
         return current_round in client.skip_rounds
 
     start = list(filter(start_condition, clients))
@@ -390,12 +380,6 @@ def update_coinjoins():
 
     with multiprocessing.pool.ThreadPool() as pool:
         pool.starmap(stop_coinjoin, ((client,) for client in stop))
-
-    # client object are modified in different processes, so we need to update them manually
-    for client in start:
-        client.active = True
-    for client in stop:
-        client.active = False
 
 
 def update_invoice_payments():
@@ -516,8 +500,8 @@ def run():
                     print(f"- could not get blocks".ljust(60), end="\r")
                     print(f"Block exception: {e}", file=sys.stderr)
 
-            update_coinjoins()
             update_invoice_payments()
+            update_coinjoins()
             print(
                 f"- coinjoin rounds: {current_round} (block {current_block})".ljust(60),
                 end="\r",
