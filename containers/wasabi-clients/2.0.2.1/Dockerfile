@@ -9,7 +9,7 @@ WORKDIR /wasabi-src
 RUN git clone https://github.com/zkSNACKs/WalletWasabi.git .
 RUN git checkout 5157745
 
-COPY logger2022.patch /wasabi-src/logger.patch
+COPY logger2021.patch /wasabi-src/logger.patch
 WORKDIR /wasabi-src
 RUN patch --binary -p1 < ./logger.patch
 
@@ -34,7 +34,7 @@ RUN apt-get update && apt-get install -y \
     libgdiplus \
     libc6-dev \
     xvfb \
-&& rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 ENV DISPLAY=:99
 
