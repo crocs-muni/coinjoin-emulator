@@ -12,7 +12,6 @@ class WasabiClientBase:
         host="localhost",
         port=37128,
         name="wasabi-client",
-        delay=0,
         proxy="",
         version="2.0.4",
         skip_rounds=[],
@@ -20,7 +19,6 @@ class WasabiClientBase:
         self.host = host
         self.port = port
         self.name = name
-        self.delay = delay
         self.proxy = proxy
         self.version = version
         self.skip_rounds = skip_rounds or list()

@@ -32,8 +32,8 @@ Scenario definition files can be passed to the simulation script using the `--sc
     },
     "wallets": [
         {"funds": [200000, 50000]},
-        {"funds": [3000000], "delay": 10},
-        {"funds": [1000000, 50000], "delay": 1, "skip_rounds": [3, 5, 6]},
+        {"funds": [3000000], "skip_rounds": [0, 1, 2, 3, 4]},
+        {"funds": [1000000, 50000], "skip_rounds": [3, 5, 6]},
         {"funds": [100000, {"value": 200000, "delay_rounds": 5}]},
         {"funds": [200000], "version": "2.0.3"},
         {"funds": [4000000], "anon_score_target": "25"},
@@ -57,7 +57,6 @@ The fields are as follows:
     - `value` is the amount of funds the wallet will use for coinjoins.
     - `delay_rounds` is the number of coinjoin rounds the distributor will wait before sending the corresponding funds to the wallet.
     - `delay_blocks` is the number of blocks the distributor will wait before sending the corresponding funds to the wallet.
-  - `delay` is the number of blocks the wallet will wait before joining coinjoins.
   - `skip_rounds` is a list of coinjoin rounds during which a wallet should not participate.
   - `version` is the string representation of wallet wasabi version used for client running this wallet.
   - `anon_score_target` is the target anon score of the wallet.

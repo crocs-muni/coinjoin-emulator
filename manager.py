@@ -25,16 +25,12 @@ SCENARIO = {
     "blocks": 0,  # the number of mined blocks after which the simulation stops (0 for no limit)
     "default_version": "2.0.4",
     "wallets": [
-        {"funds": [200000, 50000], "delay": 0, "anon_score_target": 7},
-        {"funds": [3000000], "delay": 0, "redcoin_isolation": True},
-        {"funds": [1000000, 500000], "delay": 0},
-        {"funds": [1000000, 500000], "delay": 0},
-        {"funds": [1000000, 500000], "delay": 0},
-        {"funds": [3000000, 15000], "delay": 0},
-        {"funds": [1000000, 500000], "delay": 0},
-        {"funds": [1000000, 500000], "delay": 0},
-        {"funds": [3000000, 600000], "delay": 0},
-        {"funds": [1000000, 500000], "delay": 0},
+        {"funds": [200000, 50000], "anon_score_target": 7},
+        {"funds": [3000000], "redcoin_isolation": True},
+        {"funds": [1000000, 500000], "skip_rounds": [0, 1, 2]},
+        {"funds": [3000000, 15000]},
+        {"funds": [1000000, 500000]},
+        {"funds": [3000000, 600000]},
     ],
 }
 
@@ -161,7 +157,6 @@ def start_infrastructure():
         wasabi_client_distributor_ip if args.proxy else args.control_ip,
         port=37128 if args.proxy else wasabi_client_distributor_ports[37128],
         name="wasabi-client-distributor",
-        delay=0,
         skip_rounds=[],
     )
     if not distributor.wait_wallet(timeout=60):
@@ -182,12 +177,11 @@ def fund_distributor(btc_amount):
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
 
 
-def init_wasabi_client(version, ip, port, name, delay, skip_rounds):
+def init_wasabi_client(version, ip, port, name, skip_rounds):
     return WasabiClient(version)(
         host=ip,
         port=port,
         name=name,
-        delay=delay,
         proxy=args.proxy,
         version=version,
         skip_rounds=skip_rounds,
@@ -247,7 +241,6 @@ def start_client(idx, wallet):
         ip if args.proxy else args.control_ip,
         37128 if args.proxy else manager_ports[37128],
         f"wasabi-client-{idx:03}",
-        wallet.get("delay", 0),
         wallet.get("skip_rounds", list()),
     )
 
@@ -367,7 +360,7 @@ def stop_coinjoin(client):
 
 def update_coinjoins():
     def start_condition(client):
-        return client.delay <= current_block and current_round not in client.skip_rounds
+        return current_round not in client.skip_rounds
 
     def stop_condition(client):
         return current_round in client.skip_rounds
