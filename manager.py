@@ -226,7 +226,9 @@ def start_client(idx, wallet):
                 "WASABI_ANON_SCORE_TARGET": (
                     str(anon_score_target) if anon_score_target else None
                 ),
-                "WASABI_REDCOIN_ISOLATION": redcoin_isolation,
+                "WASABI_REDCOIN_ISOLATION": (
+                    str(redcoin_isolation) if redcoin_isolation else None
+                ),
             },
             ports={37128: 37129 + idx},
             cpu=(0.3 if version < "2.0.4" else 0.1),
