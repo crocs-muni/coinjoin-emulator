@@ -4,6 +4,7 @@ import os
 import sys
 import numpy.random
 import copy
+import random
 
 SCENARIO_TEMPLATE = {
     "name": "template",
@@ -28,6 +29,7 @@ def setup_parser(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--client-count", type=int, default=10, help="number of wallets"
     )
+    parser.add_argument("--type", type=str, default="static", help="scenario type")
     parser.add_argument(
         "--distribution",
         type=str,
@@ -97,12 +99,92 @@ def setup_parser(parser: argparse.ArgumentParser):
     )
 
 
+def format_name(args):
+    if args.name:
+        return args.name
+    if args.type == "static":
+        return (
+            f"{args.distribution}-{args.type}-{args.client_count}-{args.utxo_count}utxo"
+        )
+
+
+def prepare_skip_rounds(args):
+    if not args.skip_rounds:
+        return None
+    if args.skip_rounds.startswith("random"):
+        if args.stop_round == 0:
+            print("- cannot use random skip rounds with no stop round")
+            sys.exit(1)
+
+        fraction = 2 / 3
+        if args.skip_rounds != "random":
+            try:
+                fraction = float(args.skip_rounds.split("[")[1].split("]")[0])
+            except IndexError:
+                print("- random skip rounds fraction parsing failed")
+                sys.exit(1)
+        print(f"- skipping {fraction * 100:.2f}% of rounds")
+
+        return lambda _: sorted(
+            map(
+                int,
+                numpy.random.choice(
+                    range(0, args.stop_round),
+                    size=int(args.stop_round * fraction),
+                    replace=False,
+                ),
+            )
+        )
+    else:
+        try:
+            return lambda idx: (
+                sorted(map(int, args.skip_rounds.split(",")))
+                if idx < args.client_count // 2
+                else []
+            )
+        except ValueError:
+            print("- invalid skip rounds list")
+            sys.exit(1)
+
+
+def prepare_distribution(distribution):
+    dist_name = distribution.split("[")[0]
+    dist_params = None
+    if "[" in distribution:
+        dist_params = map(float, distribution.split("[")[1].split("]")[0].split(","))
+
+    match dist_name:
+        case "uniform":
+            dist_params = dist_params or [0.0, 10_000_000.0]
+            return lambda x: map(round, numpy.random.uniform(*dist_params, x))
+        case "pareto":
+            dist_params = dist_params or [1.16]
+            return lambda x: map(
+                round, numpy.random.pareto(*dist_params, x) * 1_000_000
+            )
+        case "lognorm":
+            # parameters estimated from mainnet data of Wasabi 2.0 coinjoins
+            dist_params = dist_params or [14.1, 2.29]
+            return lambda x: map(round, numpy.random.lognormal(*dist_params, x))
+        case _:
+            return None
+
+
+def prepare_wallet(args, idx, distribution, skip_rounds):
+    wallet = dict()
+
+    wallet["funds"] = list(distribution(args.utxo_count))
+
+    if skip_rounds:
+        wallet["skip_rounds"] = skip_rounds(idx)
+
+    return wallet
+
+
 def handler(args):
     print("Generating scenario...")
     scenario = copy.deepcopy(SCENARIO_TEMPLATE)
-    scenario["name"] = args.name or (
-        f"{args.distribution}-static-{args.client_count}-{args.utxo_count}utxo"
-    )
+    scenario["name"] = format_name(args)
 
     scenario["backend"]["MaxInputCountByRound"] = args.max_coinjoin
     scenario["backend"]["MinInputCountByRoundMultiplier"] = (
@@ -123,87 +205,15 @@ def handler(args):
     if args.redcoin_isolation:
         scenario["default_redcoin_isolation"] = args.redcoin_isolation
 
-    delays = [0] * args.client_count
+    distribution = prepare_distribution(args.distribution)
+    if not distribution:
+        print("- invalid distribution")
+        sys.exit(1)
 
-    skip_rounds = None
-    if args.skip_rounds:
-        if args.skip_rounds.startswith("random"):
-            if args.stop_round == 0:
-                print("- cannot use random skip rounds with no stop round")
-                sys.exit(1)
+    skip_rounds = prepare_skip_rounds(args)
 
-            fraction = 2 / 3
-            if args.skip_rounds != "random":
-                try:
-                    fraction = float(args.skip_rounds.split("[")[1].split("]")[0])
-                except IndexError:
-                    print("- random skip rounds fraction parsing failed")
-                    sys.exit(1)
-            print(f"- skipping {fraction * 100:.2f}% of rounds")
-
-            skip_rounds = lambda _: sorted(
-                map(
-                    int,
-                    numpy.random.choice(
-                        range(0, args.stop_round),
-                        size=int(args.stop_round * fraction),
-                        replace=False,
-                    ),
-                )
-            )
-        else:
-            try:
-                skip_rounds = lambda idx: (
-                    sorted(map(int, args.skip_rounds.split(",")))
-                    if idx < args.client_count // 2
-                    else []
-                )
-            except ValueError:
-                print("- invalid skip rounds list")
-                sys.exit(1)
-
-    for idx, delay in enumerate(delays):
-        wallet = dict()
-        wallet["delay"] = delay
-
-        dist_name = args.distribution.split("[")[0]
-        dist_params = None
-        if "[" in args.distribution:
-            dist_params = map(
-                float, args.distribution.split("[")[1].split("]")[0].split(",")
-            )
-
-        match dist_name:
-            case "uniform":
-                dist_params = dist_params or [0.0, 1.0]
-                dist = numpy.random.uniform(*dist_params, args.utxo_count)
-                funds = map(round, dist * 10_000_000)
-            case "pareto":
-                dist_params = dist_params or [1.16]
-                dist = numpy.random.pareto(*dist_params, args.utxo_count)
-                funds = map(round, dist * 1_000_000)
-            case "uniformsum":
-                dist_params = dist_params or [0.0, 1.0]
-                dist = numpy.random.uniform(*dist_params, args.utxo_count)
-                funds = map(round, list(dist / sum(dist) * 100_000_000))
-            case "paretosum":
-                dist_params = dist_params or [1.16]
-                dist = numpy.random.pareto(*dist_params, args.utxo_count)
-                funds = map(round, list(dist / sum(dist) * 100_000_000))
-            case "lognorm":
-                # parameters estimated from mainnet data of Wasabi 2.0 coinjoins
-                dist_params = dist_params or [14.1, 2.29]
-                dist = numpy.random.lognormal(*dist_params, args.utxo_count)
-                funds = map(round, dist // 10)
-            case _:
-                print("- invalid distribution")
-                sys.exit(1)
-        wallet["funds"] = list(funds)
-
-        if skip_rounds:
-            wallet["skip_rounds"] = skip_rounds(idx)
-
-        scenario["wallets"].append(wallet)
+    for idx in range(args.client_count):
+        scenario["wallets"].append(prepare_wallet(args, idx, distribution, skip_rounds))
 
     print(
         f"- requires {(sum(map(lambda x: sum(x['funds']), scenario['wallets'])) / 100_000_000):0.8f} BTC"
