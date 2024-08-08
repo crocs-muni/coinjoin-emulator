@@ -106,6 +106,14 @@ def format_name(args):
         return (
             f"{args.distribution}-{args.type}-{args.client_count}-{args.utxo_count}utxo"
         )
+    if args.type == "default":
+        return f"{args.distribution}-{args.type}-{args.client_count}"
+    if args.type == "overmixing":
+        return f"{args.distribution}-{args.type}-{args.client_count}"
+    if args.type == "delayed":
+        return f"{args.distribution}-{args.type}-{args.client_count}"
+    if args.type == "delayed-overmixing":
+        return f"{args.distribution}-{args.type}-{args.client_count}"
 
 
 def prepare_skip_rounds(args):
@@ -173,7 +181,43 @@ def prepare_distribution(distribution):
 def prepare_wallet(args, idx, distribution, skip_rounds):
     wallet = dict()
 
-    wallet["funds"] = list(distribution(args.utxo_count))
+    if args.type == "default":
+        wallet["funds"] = list(distribution(random.randint(1, 10)))
+        if idx < args.client_count // 5:
+            wallet["anon_score_target"] = random.randint(27, 75)
+            wallet["redcoin_isolation"] = True
+        else:
+            wallet["anon_score_target"] = 5
+    elif args.type == "overmixing":
+        wallet["funds"] = list(distribution(random.randint(1, 10)))
+        if idx < args.client_count // 10:
+            wallet["anon_score_target"] = 1_000_000
+        elif idx < args.client_count // 5:
+            wallet["anon_score_target"] = random.randint(27, 75)
+            wallet["redcoin_isolation"] = True
+        else:
+            wallet["anon_score_target"] = 5
+    elif args.type == "delayed":
+        wallet["funds"] = list(distribution(random.randint(1, 10)))
+        wallet["skip_rounds"] = list(range(random.randint(1, 5)))
+        if idx < args.client_count // 5:
+            wallet["anon_score_target"] = random.randint(27, 75)
+            wallet["redcoin_isolation"] = True
+        else:
+            wallet["anon_score_target"] = 5
+    elif args.type == "delayed-overmixing":
+        wallet["funds"] = list(distribution(random.randint(1, 10)))
+        if idx < args.client_count // 10:
+            wallet["anon_score_target"] = 1_000_000
+        elif idx < args.client_count // 5:
+            wallet["skip_rounds"] = list(range(random.randint(1, 5)))
+            wallet["anon_score_target"] = random.randint(27, 75)
+            wallet["redcoin_isolation"] = True
+        else:
+            wallet["skip_rounds"] = list(range(random.randint(1, 5)))
+            wallet["anon_score_target"] = 5
+    else:
+        wallet["funds"] = list(distribution(args.utxo_count))
 
     if skip_rounds:
         wallet["skip_rounds"] = skip_rounds(idx)
