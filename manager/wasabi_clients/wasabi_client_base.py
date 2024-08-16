@@ -14,14 +14,16 @@ class WasabiClientBase:
         name="wasabi-client",
         proxy="",
         version="2.0.4",
-        skip_rounds=[],
+        delay=(0, 0),
+        stop=(0, 0),
     ):
         self.host = host
         self.port = port
         self.name = name
         self.proxy = proxy
         self.version = version
-        self.skip_rounds = skip_rounds or list()
+        self.delay = delay
+        self.stop = stop
 
     def _rpc(self, request, wallet=True, timeout=5, repeat=1):
         request["jsonrpc"] = "2.0"

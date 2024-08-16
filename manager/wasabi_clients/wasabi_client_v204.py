@@ -10,6 +10,7 @@ class WasabiClientV204(WasabiClientBase):
         name="wasabi-client",
         proxy="",
         version="2.0.4",
-        skip_rounds=[],
+        delay=(0, 0),
+        stop=(0, 0),
     ):
-        super().__init__(host, port, name, proxy, version, skip_rounds)
+        super().__init__(host, port, name, proxy, version, delay, stop)

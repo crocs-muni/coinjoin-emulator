@@ -157,7 +157,8 @@ def start_infrastructure():
         wasabi_client_distributor_ip if args.proxy else args.control_ip,
         port=37128 if args.proxy else wasabi_client_distributor_ports[37128],
         name="wasabi-client-distributor",
-        skip_rounds=[],
+        delay=(0, 0),
+        stop=(0, 0),
     )
     if not distributor.wait_wallet(timeout=60):
         print(f"- could not start distributor (application timeout)")
@@ -177,14 +178,15 @@ def fund_distributor(btc_amount):
     print(f"- funded (current balance {balance / BTC:.8f} BTC)")
 
 
-def init_wasabi_client(version, ip, port, name, skip_rounds):
+def init_wasabi_client(version, ip, port, name, delay, stop):
     return WasabiClient(version)(
         host=ip,
         port=port,
         name=name,
         proxy=args.proxy,
         version=version,
-        skip_rounds=skip_rounds,
+        delay=delay,
+        stop=stop,
     )
 
 
@@ -238,12 +240,15 @@ def start_client(idx, wallet):
         print(f"- could not start {name} ({e})")
         return None
 
+    delay = (wallet.get("delay_blocks", 0), wallet.get("delay_rounds", 0))
+    stop = (wallet.get("stop_blocks", 0), wallet.get("stop_rounds", 0))
     client = init_wasabi_client(
         version,
         ip if args.proxy else args.control_ip,
         37128 if args.proxy else manager_ports[37128],
         f"wasabi-client-{idx:03}",
-        wallet.get("skip_rounds", list()),
+        delay,
+        stop,
     )
 
     start = time()
@@ -362,13 +367,22 @@ def stop_coinjoin(client):
 
 def update_coinjoins():
     def start_condition(client):
-        return current_round not in client.skip_rounds
+        if client.stop[0] > 0 and current_block >= client.stop[0]:
+            return False
+        if client.stop[1] > 0 and current_round >= client.stop[1]:
+            return False
+        if current_block < client.delay[0]:
+            return False
+        if current_round < client.delay[1]:
+            return False
+        return True
 
-    def stop_condition(client):
-        return current_round in client.skip_rounds
-
-    start = list(filter(start_condition, clients))
-    stop = list(filter(stop_condition, clients))
+    start, stop = [], []
+    for client in clients:
+        if start_condition(client):
+            start.append(client)
+        else:
+            stop.append(client)
 
     with multiprocessing.pool.ThreadPool() as pool:
         pool.starmap(start_coinjoin, ((client,) for client in start))

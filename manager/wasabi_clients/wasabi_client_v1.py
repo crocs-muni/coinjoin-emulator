@@ -11,9 +11,10 @@ class WasabiClientV1(WasabiClientBase):
         name="wasabi-client",
         proxy="",
         version="1.1.12.9",
-        skip_rounds=[],
+        delay=(0, 0),
+        stop=(0, 0),
     ):
-        super().__init__(host, port, name, proxy, version, skip_rounds)
+        super().__init__(host, port, name, proxy, version, delay, stop)
 
     def select(self, timeout=5, repeat=10):
         request = {"method": "selectwallet", "params": [WALLET_NAME]}
