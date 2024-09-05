@@ -1,11 +1,11 @@
-# CoinJoin simulation setup
+# EmuCoinJoin
 
-A container-based setup for simulating CoinJoins on RegTest network.
+A container-based setup for the emulation of CoinJoin transactions on RegTest network.
 
 ## Usage
 
 1. Install [Docker](https://docker.com/) and [Python](http://python.org/).
-2. Clone the repository `git clone --recurse-submodules https://github.com/crocs-muni/coinjoin-simulator`.
+2. Clone the repository `git clone --recurse-submodules https://github.com/crocs-muni/coinjoin-emulator`.
 3. Install dependencies: `pip install -r requirements.txt`.
 4. Run the default scenario with the default driver: `python manager.py run`.
    - [Scenario](#scenarios) definition file can be specified using the `--scenario` option.
