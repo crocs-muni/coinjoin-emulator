@@ -41,25 +41,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--no-logs", action="store_true", default=False)
 
-    console_subparser = subparsers.add_parser("console", help="run console")
-    console_subparser.add_argument(
-        "--force-rebuild", action="store_true", help="force rebuild of images"
-    )
-    console_subparser.add_argument("--namespace", type=str, default="coinjoin")
-    console_subparser.add_argument(
-        "--image-prefix", type=str, default="", help="image prefix"
-    )
-    console_subparser.add_argument("--proxy", type=str, default="")
-    console_subparser.add_argument(
-        "--btc-node-ip", type=str, help="override btc-node ip", default=""
-    )
-    console_subparser.add_argument(
-        "--control-ip", type=str, help="control ip", default="localhost"
-    )
-    console_subparser.add_argument("--reuse-namespace", action="store_true", default=False)
-
-
-
     build_subparser = subparsers.add_parser("build", help="build images")
     build_subparser.add_argument(
         "--force-rebuild", action="store_true", help="force rebuild of images"

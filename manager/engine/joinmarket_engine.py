@@ -1,28 +1,15 @@
 from manager.engine.engine_base import EngineBase
-from manager.wasabi_clients.joinmarket_client import JoinMarketClientServer
+from manager.wasabi_clients.joinmarket_clients.joinmarket_client_base import JoinMarketClientServer
 from time import sleep, time
-import sys
-
 SCENARIO = {
     "name": "default",
     "default_version": "joinmarket",
-    "rounds": 5,  # the number of coinjoins after which the simulation stops (0 for no limit)
+    "rounds": 0,  # the number of coinjoins after which the simulation stops (0 for no limit)
     "blocks": 0,  # the number of mined blocks after which the simulation stops (0 for no limit)
-    "wallets": [
-        {"funds": [200000, 50000], "type": "taker"},
-        {"funds": [3000000], "type": "taker", "delay_blocks": 2},
-        {"funds": [1000000, 500000], "type": "maker"},
-        {"funds": [3000000, 15000], "type": "maker"},
-        {"funds": [1000000, 500000], "type": "maker"},
-        {"funds": [3000000, 600000], "type": "maker"},
-        {"funds": [200000, 50000], "type": "maker"},
-        {"funds": [3000000], "type": "maker"},
-        {"funds": [1000000, 500000], "type": "maker"},
-        {"funds": [3000000, 15000], "type": "maker"},
-        {"funds": [1000000, 500000], "type": "maker"},
-        {"funds": [3000000, 600000], "type": "maker"},
-    ],
+    "wallets": [],
 }
+import sys
+
 
 
 class JoinmarketEngine(EngineBase):
@@ -49,6 +36,7 @@ class JoinmarketEngine(EngineBase):
 
 
     def start_irc_server(self):
+        # TODO: When the container fails to start, the exception is not thrown and it is not recognized.
         name = "irc-server"
 
         try:
@@ -84,7 +72,7 @@ class JoinmarketEngine(EngineBase):
         self.distributor = self.init_joinmarket_clientserver(name=name, port=port)
 
         start = time()
-        if not self.distributor.wait_wallet(timeout=60):
+        if not self.distributor.wait_wallet(timeout=15):
             print(f"- could not start {name} (application timeout)")
             raise Exception("Could not start distributor")
         print(f"- started distributor")
@@ -112,21 +100,7 @@ class JoinmarketEngine(EngineBase):
 
         print(f"driver starting {name}")
 
-        delay = (wallet.get("delay_blocks", 0), wallet.get("delay_rounds", 0))
-        stop = (wallet.get("stop_blocks", 0), wallet.get("stop_rounds", 0))
-        type = wallet.get("type", "maker")
-
-        client = JoinMarketClientServer(name=name, port=port, type=type, delay=delay, stop=stop)
-
-
-        start = time()
-        if not client.wait_wallet(timeout=60):
-            print(
-                f"- could not start {name} (application timeout {time() - start} seconds)"
-            )
-            return None
-
-        print(f"- started {client.name} (wait took {time() - start} seconds)")
+        client = JoinMarketClientServer.from_wallet(name, port, wallet)
         return client
 
     def stop_client(self, idx: int):
@@ -137,26 +111,12 @@ class JoinmarketEngine(EngineBase):
         # TODO: store irc logs.
         pass
 
+
     def update_coinjoins_joinmarket(self):
         for client in self.clients:
-            state = client.get_status()
-            # print(state)
-            if client.type == "maker" and not client.maker_running and not client.delay[0] > self.current_block:
-                client.start_maker(0, 5000, 0.00004, "sw0reloffer", 30000)
-                print(f"Starting maker {client.name}")
-
-            if client.type == "taker" and not client.coinjoin_in_process and not client.delay[0] > self.current_block:
-                self.current_round += 1
-                address = client.get_new_address()
-                client.start_coinjoin(0, 40000, 4, address)
-                client.coinjoin_start = self.current_block
-                print(f"Starting coinjoin {client.name}")
-
-            if client.type == "taker" and client.coinjoin_in_process and client.coinjoin_start + 4 < self.current_block:
-                self.current_round -= 1
-                client.stop_coinjoin()
-                client.coinjoin_in_process = False
-                print(f"Stopping coinjoin {client.name}")
+            delta = client.update(self.current_block, self.current_round)
+            # Apply any change in round count; alternatively, have the client trigger an event.
+            self.current_round += delta
 
 
     def run_engine(self):
@@ -165,6 +125,8 @@ class JoinmarketEngine(EngineBase):
         for i in range(5):
             # Takers need 3 confirmations of transactions for the sourcing commitments
             self.node.mine_block()
+
+        print(f"- coinjoin rounds: {self.current_round} (block {self.current_block})".ljust(60))
 
         while ( self.scenario["rounds"] == 0 or self.current_round < self.scenario["rounds"] ) and (
                 self.scenario["blocks"] == 0 or self.current_block < self.scenario["blocks"]):

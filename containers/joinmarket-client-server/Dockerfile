@@ -1,4 +1,4 @@
-FROM joinmarket-test
+FROM joinmarket-latest
 
 
 # Copy the config file to the right place

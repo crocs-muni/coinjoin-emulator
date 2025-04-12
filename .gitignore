@@ -1,3 +1,5 @@
 __pycache__/
 mounts/
 logs/
+logs_selected
+*.idea/

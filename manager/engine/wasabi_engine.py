@@ -228,9 +228,9 @@ class WasabiEngine(EngineBase):
                 return False
             if client.stop[1] > 0 and self.current_round >= client.stop[1]:
                 return False
-            if self.current_block < client.delay[0]:
+            if self.current_block < client.next_coinjoin_allowed[0]:
                 return False
-            if self.current_round < client.delay[1]:
+            if self.current_round < client.next_coinjoin_allowed[1]:
                 return False
             return True
 

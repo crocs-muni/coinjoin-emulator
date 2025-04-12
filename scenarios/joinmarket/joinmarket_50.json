@@ -1,0 +1,39 @@
+{
+  "name": "expanded",
+  "default_version": "joinmarket",
+  "rounds": 50,
+  "blocks": 0,
+  "wallets": [
+    {
+      "funds": [
+        4046164
+      ],
+      "type": "taker",
+      "offers": [
+        {
+          "mixdepth": 0,
+          "amount_sats": 63925,
+          "counterparties": 6
+        }
+      ]
+    },
+    {
+      "funds": [
+        5063332,
+        7418286,
+        6989908
+      ],
+      "type": "maker",
+      "offers": [
+        {
+          "txfee": 2921,
+          "cjfee_a": 2947,
+          "cjfee_r": 0.00004665,
+          "ordertype": "sw0reloffer",
+          "minsize": 1294193,
+          "maxsize": 1995253
+        }
+      ]
+    }
+  ]
+}
