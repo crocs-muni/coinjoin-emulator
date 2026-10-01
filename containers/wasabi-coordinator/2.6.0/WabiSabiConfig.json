@@ -3,6 +3,7 @@
   "BitcoinRpcConnectionString": "user:password",
   "DoSSeverity": "0.10",
   "ConfirmationTarget": 108,
+  "MiningFeeRate": null,
   "DoSMinTimeForFailedToVerify": "31d 0h 0m 0s",
   "DoSMinTimeForCheating": "1d 0h 0m 0s",
   "DoSPenaltyFactorForDisruptingConfirmation": 0.2,

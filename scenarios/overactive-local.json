@@ -1,6 +1,6 @@
 {
   "name": "overactive-local",
-  "rounds": 50,
+  "rounds": 5,
   "blocks": 0,
   "default_version": "2.6.0",
   "wallets": [
@@ -238,6 +238,7 @@
     "TransactionSigningTimeout": "0d 0h 2m 00s",
     "FailFastTransactionSigningTimeout": "0d 0h 2m 0s",
     "DoSMinTimeInPrison": "99d 0h 0m 0s",
-    "RoundExpiryTimeout": "0d 0h 1m 0s"
+    "RoundExpiryTimeout": "0d 0h 1m 0s",
+    "MiningFeeRate": 5
   }
 }

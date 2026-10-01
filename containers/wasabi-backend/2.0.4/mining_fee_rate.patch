@@ -1,0 +1,36 @@
+diff --git a/WalletWasabi/WabiSabi/Backend/Rounds/RoundParameterFactory.cs b/WalletWasabi/WabiSabi/Backend/Rounds/RoundParameterFactory.cs
+index 9f0b2c9..4a1d6ab 100644
+--- a/WalletWasabi/WabiSabi/Backend/Rounds/RoundParameterFactory.cs
++++ b/WalletWasabi/WabiSabi/Backend/Rounds/RoundParameterFactory.cs
+@@ -17,7 +17,7 @@ public class RoundParameterFactory
+ 		RoundParameters.Create(
+ 			Config,
+ 			Network,
+-			feeRate,
++			Config.MiningFeeRate is { } fixedRate ? new FeeRate(fixedRate) : feeRate,
+ 			Config.CoordinationFeeRate,
+ 			maxSuggestedAmount);
+ 
+@@ -25,7 +25,7 @@ public class RoundParameterFactory
+ 		RoundParameters.Create(
+ 			Config,
+ 			Network,
+-			feeRate,
++			Config.MiningFeeRate is { } fixedRate ? new FeeRate(fixedRate) : feeRate,
+ 			Config.CoordinationFeeRate,
+ 			blameOf.Parameters.MaxSuggestedAmount);
+ }
+diff --git a/WalletWasabi/WabiSabi/Backend/WabiSabiConfig.cs b/WalletWasabi/WabiSabi/Backend/WabiSabiConfig.cs
+index b960fb2..49f3fbf 100644
+--- a/WalletWasabi/WabiSabi/Backend/WabiSabiConfig.cs
++++ b/WalletWasabi/WabiSabi/Backend/WabiSabiConfig.cs
+@@ -30,6 +30,9 @@ public class WabiSabiConfig : ConfigBase
+ 	[JsonProperty(PropertyName = "ConfirmationTarget", DefaultValueHandling = DefaultValueHandling.Populate)]
+ 	public uint ConfirmationTarget { get; set; } = 108;
+ 
++	[JsonProperty(PropertyName = "MiningFeeRate")]
++	public decimal? MiningFeeRate { get; set; } = null;
++
+ 	[DefaultValueMoneyBtc("0.1")]
+ 	[JsonProperty(PropertyName = "DoSSeverity", DefaultValueHandling = DefaultValueHandling.Populate)]
+ 	[JsonConverter(typeof(MoneyBtcJsonConverter))]
