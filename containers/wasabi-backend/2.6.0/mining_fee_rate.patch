@@ -1,0 +1,53 @@
+diff --git a/WalletWasabi/Serialization/Config.cs b/WalletWasabi/Serialization/Config.cs
+index 2c3c957..d6401a4 100644
+--- a/WalletWasabi/Serialization/Config.cs
++++ b/WalletWasabi/Serialization/Config.cs
+@@ -33,6 +33,7 @@ public static partial class Encode
+ 			("BitcoinCoreRpcEndPoint", EndPoint(cfg.BitcoinCoreRpcEndPoint, Constants.DefaultMainNetBitcoinCoreRpcPort)),
+ 			("BitcoinRpcConnectionString", String(cfg.BitcoinRpcConnectionString)),
+ 			("ConfirmationTarget", UInt(cfg.ConfirmationTarget)),
++			("MiningFeeRate", cfg.MiningFeeRate is { } miningFeeRate ? Decimal(miningFeeRate) : null),
+ 			("DoSSeverity", MoneyBitcoins(cfg.DoSSeverity)),
+ 			("DoSMinTimeForFailedToVerify", TimeSpan(cfg.DoSMinTimeForFailedToVerify) ),
+ 			("DoSMinTimeForCheating", TimeSpan(cfg.DoSMinTimeForCheating) ),
+@@ -110,6 +111,7 @@ public static partial class Decode
+ 			BitcoinCoreRpcEndPoint = get.Required("BitcoinCoreRpcEndPoint", EndPoint),
+ 			BitcoinRpcConnectionString = get.Required("BitcoinRpcConnectionString", String),
+ 			ConfirmationTarget = get.Required("ConfirmationTarget", UInt),
++			MiningFeeRate = get.Optional("MiningFeeRate", Decimal),
+ 			DoSSeverity = get.Required("DoSSeverity", MoneyBitcoins),
+ 			DoSMinTimeForFailedToVerify = get.Required("DoSMinTimeForFailedToVerify", TimeSpan),
+ 			DoSMinTimeForCheating = get.Required("DoSMinTimeForCheating", TimeSpan),
+diff --git a/WalletWasabi/WabiSabi/Coordinator/Rounds/RoundParameterFactory.cs b/WalletWasabi/WabiSabi/Coordinator/Rounds/RoundParameterFactory.cs
+index 0cdd105..8ac64b7 100644
+--- a/WalletWasabi/WabiSabi/Coordinator/Rounds/RoundParameterFactory.cs
++++ b/WalletWasabi/WabiSabi/Coordinator/Rounds/RoundParameterFactory.cs
+@@ -17,13 +17,13 @@ public class RoundParameterFactory
+ 		RoundParameters.Create(
+ 			Config,
+ 			Network,
+-			feeRate,
++			Config.MiningFeeRate is { } fixedRate ? new FeeRate(fixedRate) : feeRate,
+ 			maxSuggestedAmount);
+ 
+ 	public virtual RoundParameters CreateBlameRoundParameter(FeeRate feeRate, Round blameOf) =>
+ 		RoundParameters.Create(
+ 			Config,
+ 			Network,
+-			feeRate,
++			Config.MiningFeeRate is { } fixedRate ? new FeeRate(fixedRate) : feeRate,
+ 			blameOf.Parameters.MaxSuggestedAmount);
+ }
+diff --git a/WalletWasabi/WabiSabi/Coordinator/WabiSabiConfig.cs b/WalletWasabi/WabiSabi/Coordinator/WabiSabiConfig.cs
+index 451c7c2..f3961e6 100644
+--- a/WalletWasabi/WabiSabi/Coordinator/WabiSabiConfig.cs
++++ b/WalletWasabi/WabiSabi/Coordinator/WabiSabiConfig.cs
+@@ -30,6 +30,8 @@ public class WabiSabiConfig : ConfigBase
+ 
+ 	public uint ConfirmationTarget { get; init; } = 108;
+ 
++	public decimal? MiningFeeRate { get; init; } = null;
++
+ 	public Money DoSSeverity { get; init; } = Money.Coins(0.1m);
+ 
+ 	public TimeSpan DoSMinTimeForFailedToVerify { get; init; } = TimeSpan.FromDays(31);

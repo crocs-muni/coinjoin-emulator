@@ -17,7 +17,7 @@ rm -rf /home/wasabi/.walletwasabi
 printf '\n\n\nStarting WalletWasabi Daemon with CLI arguments...\n\n'
 
 # Start WalletWasabi Daemon with all config passed as CLI arguments
-dotnet run \
+dotnet run -p:NuGetAudit=false \
   --Network=RegTest \
   --MainNetBackendUri=https://api.wasabiwallet.io/ \
   --TestNetBackendUri=https://api.wasabiwallet.co/ \

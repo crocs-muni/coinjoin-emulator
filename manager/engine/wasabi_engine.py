@@ -148,6 +148,32 @@ class WasabiEngine(EngineBase):
         )
         sleep(1)
 
+        # v2.6.0 coordinator reads its WabiSabi settings from Config.json (not WabiSabiConfig.json).
+        # Source template is Config.json; still substitute ADDR_BTC_NODE so the RPC endpoint is valid.
+        config_path = f"./containers/wasabi-coordinator/{version}/Config.json"
+        with open(config_path, "r") as config_file:
+            raw = config_file.read()
+        raw = raw.replace(
+            "${ADDR_BTC_NODE}",
+            self.args.btc_node_ip or self.node.internal_ip or "btc-node",
+        )
+        coordinator_config = json.loads(raw)
+        coordinator_config.update(self.scenario.backend or {})
+
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            scenario_file = tmp_file.name
+            tmp_file.write(json.dumps(coordinator_config, indent=2).encode())
+
+        try:
+            self.driver.upload(
+                "wasabi-coordinator",
+                scenario_file,
+                "/home/wasabi/.walletwasabi/coordinator/Config.json",
+            )
+        except Exception as e:
+            print_exception(e)
+            raise
+
         self.coordinator = create_coordinator(
             host=wasabi_coordinator_ip if self.args.proxy else self.args.control_ip,
             port=37128 if self.args.proxy else wasabi_coordinator_ports[37128],
