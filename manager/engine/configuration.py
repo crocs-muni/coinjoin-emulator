@@ -109,20 +109,18 @@ class ScenarioConfig:
         
         # Extract Wasabi-specific fields
         wasabi_config = None
-        wasabi_fields = {
-            "anon_score_target": wallet_data.get("anon_score_target"),
-            "redcoin_isolation": wallet_data.get("redcoin_isolation"),
-            "skip_rounds": wallet_data.get("skip_rounds")
-        }
-        if any(v is not None for v in wasabi_fields.values()):
-            wasabi_config = WasabiConfig(**wasabi_fields)
+        if (wasabi_data := wallet_data.get("wasabi")) is not None:
+            wasabi_config = WasabiConfig(
+                anon_score_target=wasabi_data.get("anon_score_target"),
+                redcoin_isolation=wasabi_data.get("redcoin_isolation"),
+                skip_rounds=wasabi_data.get("skip_rounds"),
+            )
         
         # Extract JoinMarket-specific fields
         joinmarket_config = None
-        if "type" in wallet_data:
-            role_str = wallet_data["type"]
-            role = JoinMarketRole.MAKER if role_str == "maker" else JoinMarketRole.TAKER
-            joinmarket_config = JoinMarketConfig(role=role)
+        if (joinmarket_data := wallet_data.get("joinmarket")) is not None:
+            role = joinmarket_data.get("role")
+            joinmarket_config = JoinMarketConfig(role=JoinMarketRole(role) if role is not None else None)
         
         return WalletConfig(
             funds=funds,
@@ -137,7 +135,10 @@ class ScenarioConfig:
     
     def to_dict(self) -> dict[str, Any]:
         """Convert the scenario configuration to a dictionary for JSON serialization."""
-        return asdict(self)
+        return asdict(
+            self,
+            dict_factory=lambda items: {k: v.value if isinstance(v, Enum) else v for k, v in items},
+        )
 
 
 # Type aliases for convenience
