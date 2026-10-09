@@ -373,3 +373,6 @@ class JoinMarketClientServer:
         # endpoint = f"/wallet/{self.walletname}/keys"
         # response = self._rpc(method, endpoint)
         # return response
+
+    def get_history(self):
+        return "This method is not available in joinmarket"

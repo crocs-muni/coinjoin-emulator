@@ -169,6 +169,11 @@ class EngineBase:
         with open(os.path.join(client_path, "keys.json"), "w") as f:
             json.dump(client.list_keys(), f, indent=2)
             print(f"- stored {client.name} keys")
+
+        with open(os.path.join(client_path, "history.json"), "w") as f:
+            json.dump(client.get_history(), f, indent=2)
+            print(f"- stored {client.name} history")
+            
         try:
             self.driver.download(client.name, self.log_src_path, client_path)
 
