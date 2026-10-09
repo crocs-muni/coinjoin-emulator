@@ -406,12 +406,12 @@ class WasabiEngine(EngineBase):
     def _get_current_round(self) -> int:
         if self.backend_architecture == BackendArchitecture.SPLIT and self.coordinator is not None:
             resp = self.coordinator._get_status()
-            if resp is not None:
-                for round_state in resp["RoundStates"]:
-                    if round_state["Phase"] == "TransactionSigning":
-                        self.round_ids.add(round_state["RoundId"])
-                return len(self.round_ids)
-            return 0
+            if resp is None:
+                raise RuntimeError("Could not get coordinator status")
+            for round_state in resp["RoundStates"]:
+                if round_state["Phase"] == "TransactionSigning":
+                    self.round_ids.add(round_state["RoundId"])
+            return len(self.round_ids)
 
         else:
             # In legacy versions, rounds are tracked by the backend
