@@ -29,7 +29,7 @@ class WasabiEngine(EngineBase):
         self.backend: WasabiBackendProtocol | None = None
         self.backend_architecture: BackendArchitecture | None = None
         self.round_ids: set[str] = set()
-        super().__init__(args, driver, "/home/wasabi/.walletwasabi/backend/")
+        super().__init__(args, driver, "/home/wasabi/.walletwasabi/client/")
 
     def default_scenario(self) -> ScenarioConfig:
         return ScenarioConfig(
