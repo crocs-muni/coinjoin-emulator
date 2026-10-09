@@ -160,20 +160,20 @@ class EngineBase:
         sleep(random.random() * 3)
         client_path = os.path.join(data_path, client.name)
         os.mkdir(client_path)
-        with open(os.path.join(client_path, "coins.json"), "w") as f:
-            json.dump(client.list_coins(), f, indent=2)
-            print(f"- stored {client.name} coins")
-        with open(os.path.join(client_path, "unspent_coins.json"), "w") as f:
-            json.dump(client.list_unspent_coins(), f, indent=2)
-            print(f"- stored {client.name} unspent coins")
-        with open(os.path.join(client_path, "keys.json"), "w") as f:
-            json.dump(client.list_keys(), f, indent=2)
-            print(f"- stored {client.name} keys")
+        for label, filename, getter in (
+            ("coins", "coins.json", client.list_coins),
+            ("unspent coins", "unspent_coins.json", client.list_unspent_coins),
+            ("keys", "keys.json", client.list_keys),
+            ("history", "history.json", client.get_history),
+        ):
+            try:
+                data = getter()
+                with open(os.path.join(client_path, filename), "w") as f:
+                    json.dump(data, f, indent=2)
+                print(f"- stored {client.name} {label}")
+            except Exception as e:
+                print(f"- could not store {client.name} {label} ({e})")
 
-        with open(os.path.join(client_path, "history.json"), "w") as f:
-            json.dump(client.get_history(), f, indent=2)
-            print(f"- stored {client.name} history")
-            
         try:
             self.driver.download(client.name, self.log_src_path, client_path)
 
@@ -220,8 +220,11 @@ class EngineBase:
     def stop_coinjoins(self):
         print("Stopping coinjoins")
         for client in self.clients:
-            client.stop_coinjoin()
-            print(f"- stopped mixing {client.name}")
+            try:
+                client.stop_coinjoin()
+                print(f"- stopped mixing {client.name}")
+            except Exception as e:
+                print(f"- could not stop mixing {client.name} ({e})")
 
     def update_invoice_payments(self):
         due = list(filter(lambda x: x[0] <= self.current_block and x[1] <= self.current_round, self.invoices.keys()))

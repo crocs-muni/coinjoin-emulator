@@ -26,10 +26,12 @@ def run():
         print(f"Terminating exception: {e}", file=sys.stderr)
         print_exception(e)
     finally:
-        engine.stop_coinjoins()
-        if not args.no_logs:
-            engine.store_logs()
-        driver.cleanup(args.image_prefix)
+        try:
+            engine.stop_coinjoins()
+            if not args.no_logs:
+                engine.store_logs()
+        finally:
+            driver.cleanup(args.image_prefix)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run coinjoin simulation setup")
