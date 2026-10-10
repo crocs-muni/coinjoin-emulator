@@ -61,12 +61,6 @@ def setup_parser(parser: argparse.ArgumentParser):
         default=0,
         help="terminate after N blocks, 0 for no limit",
     )
-    parser.add_argument(
-        "--skip-rounds",
-        type=str,
-        required=False,
-        help="skip rounds ('random[fraction]' for randomly sampled fraction of rounds, or comma-separated list of rounds to skip)",
-    )
     parser.add_argument("--force", action="store_true", help="overwrite existing files")
     parser.add_argument(
         "--out-dir", type=str, default="scenarios", help="output directory"
@@ -117,45 +111,6 @@ def format_name(args):
     return f"{args.distribution}-{args.type}-{args.client_count}"
 
 
-def prepare_skip_rounds(args):
-    if not args.skip_rounds:
-        return None
-    if args.skip_rounds.startswith("random"):
-        if args.stop_round == 0:
-            print("- cannot use random skip rounds with no stop round")
-            sys.exit(1)
-
-        fraction = 2 / 3
-        if args.skip_rounds != "random":
-            try:
-                fraction = float(args.skip_rounds.split("[")[1].split("]")[0])
-            except IndexError:
-                print("- random skip rounds fraction parsing failed")
-                sys.exit(1)
-        print(f"- skipping {fraction * 100:.2f}% of rounds")
-
-        return lambda _: sorted(
-            map(
-                int,
-                numpy.random.choice(
-                    range(0, args.stop_round),
-                    size=int(args.stop_round * fraction),
-                    replace=False,
-                ),
-            )
-        )
-    else:
-        try:
-            return lambda idx: (
-                sorted(map(int, args.skip_rounds.split(",")))
-                if idx < args.client_count // 2
-                else []
-            )
-        except ValueError:
-            print("- invalid skip rounds list")
-            sys.exit(1)
-
-
 def prepare_distribution(distribution):
     dist_name = distribution.split("[")[0]
     dist_params = None
@@ -179,12 +134,12 @@ def prepare_distribution(distribution):
             return None
 
 
-def prepare_wallet(args, idx, distribution, skip_rounds):
+def prepare_wallet(args, idx, distribution):
     """Create a WalletConfig object based on args and wallet type."""
     funds = None
     anon_score_target = None
     redcoin_isolation = None
-    skip_rounds_list = None
+    delay_rounds = None
 
     if args.type == "default":
         funds = list(distribution(random.randint(1, 10)))
@@ -204,7 +159,7 @@ def prepare_wallet(args, idx, distribution, skip_rounds):
             anon_score_target = 5
     elif args.type == "delayed":
         funds = list(distribution(random.randint(1, 10)))
-        skip_rounds_list = list(range(random.randint(1, 5)))
+        delay_rounds = random.randint(1, 5)
         if idx < args.client_count // 5:
             anon_score_target = random.randint(27, 75)
             redcoin_isolation = True
@@ -215,29 +170,26 @@ def prepare_wallet(args, idx, distribution, skip_rounds):
         if idx < args.client_count // 10:
             anon_score_target = 1_000_000
         elif idx < args.client_count // 5:
-            skip_rounds_list = list(range(random.randint(1, 5)))
+            delay_rounds = random.randint(1, 5)
             anon_score_target = random.randint(27, 75)
             redcoin_isolation = True
         else:
-            skip_rounds_list = list(range(random.randint(1, 5)))
+            delay_rounds = random.randint(1, 5)
             anon_score_target = 5
     else:
         funds = list(distribution(args.utxo_count))
 
-    if skip_rounds:
-        skip_rounds_list = skip_rounds(idx)
-
     # Create Wasabi-specific config if any Wasabi settings are present
     wasabi_config = None
-    if anon_score_target is not None or redcoin_isolation is not None or skip_rounds_list is not None:
+    if anon_score_target is not None or redcoin_isolation is not None:
         wasabi_config = WasabiConfig(
             anon_score_target=anon_score_target,
             redcoin_isolation=redcoin_isolation,
-            skip_rounds=skip_rounds_list
         )
 
     return WalletConfig(
         funds=funds,
+        delay_rounds=delay_rounds,
         wasabi=wasabi_config
     )
 
@@ -250,12 +202,10 @@ def handler(args):
         print("- invalid distribution")
         sys.exit(1)
 
-    skip_rounds = prepare_skip_rounds(args)
-
     # Generate wallets
     wallets = []
     for idx in range(args.client_count):
-        wallets.append(prepare_wallet(args, idx, distribution, skip_rounds))
+        wallets.append(prepare_wallet(args, idx, distribution))
 
     # Create scenario
     scenario = ScenarioConfig(

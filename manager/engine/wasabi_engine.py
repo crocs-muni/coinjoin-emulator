@@ -40,7 +40,7 @@ class WasabiEngine(EngineBase):
             wallets=[
                 WalletConfig(funds=[200000, 50000], wasabi=WasabiConfig(anon_score_target=7)),
                 WalletConfig(funds=[3000000], wasabi=WasabiConfig(redcoin_isolation=True)),
-                WalletConfig(funds=[1000000, 500000], wasabi=WasabiConfig(skip_rounds=[0, 1, 2])),
+                WalletConfig(funds=[1000000, 500000], delay_rounds=3),
                 WalletConfig(funds=[3000000, 15000]),
                 WalletConfig(funds=[1000000, 500000]),
                 WalletConfig(funds=[3000000, 600000]),

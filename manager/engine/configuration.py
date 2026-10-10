@@ -24,7 +24,6 @@ class WasabiConfig:
     """Wasabi-specific wallet settings."""
     anon_score_target: int | str | None = None  # requires version >= 2.0.3
     redcoin_isolation: bool | None = None  # requires version >= 2.0.3
-    skip_rounds: list[int] | None = None
 
 
 @dataclass
@@ -113,7 +112,6 @@ class ScenarioConfig:
             wasabi_config = WasabiConfig(
                 anon_score_target=wasabi_data.get("anon_score_target"),
                 redcoin_isolation=wasabi_data.get("redcoin_isolation"),
-                skip_rounds=wasabi_data.get("skip_rounds"),
             )
         
         # Extract JoinMarket-specific fields

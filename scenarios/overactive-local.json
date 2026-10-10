@@ -13,8 +13,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 1000000,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -30,8 +29,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 40,
-        "redcoin_isolation": true,
-        "skip_rounds": null
+        "redcoin_isolation": true
       },
       "joinmarket": null
     },
@@ -47,8 +45,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 37,
-        "redcoin_isolation": true,
-        "skip_rounds": null
+        "redcoin_isolation": true
       },
       "joinmarket": null
     },
@@ -61,8 +58,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -75,8 +71,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -89,8 +84,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -103,8 +97,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -119,8 +112,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -133,8 +125,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -147,8 +138,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -161,8 +151,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -178,8 +167,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -192,8 +180,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -206,8 +193,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     },
@@ -220,8 +206,7 @@
       "version": null,
       "wasabi": {
         "anon_score_target": 5,
-        "redcoin_isolation": null,
-        "skip_rounds": null
+        "redcoin_isolation": null
       },
       "joinmarket": null
     }
