@@ -308,33 +308,25 @@ class WasabiEngine(EngineBase):
 
     def store_engine_logs(self, data_path):
         try:
-            if self.backend_architecture == BackendArchitecture.SPLIT:
-                self.driver.download(
-                    "wasabi-backend",
-                    "/home/wasabi/.walletwasabi/backend/",
-                    os.path.join(data_path, "wasabi-backend-2.6"),
-                )
-                print(f"- stored backend-2.6 logs")
-
-                try:
-                    self.driver.download(
-                        "wasabi-coordinator",
-                        "/home/wasabi/.walletwasabi/coordinator/",
-                        os.path.join(data_path, "wasabi-coordinator"),
-                    )
-                    print(f"- stored coordinator logs")
-                except:
-                    print(f"- could not store coordinator logs")
-            else:
-                # Store logs from legacy backend
-                self.driver.download(
-                    "wasabi-backend",
-                    "/home/wasabi/.walletwasabi/backend/",
-                    os.path.join(data_path, "wasabi-backend"),
-                )
-                print(f"- stored backend logs")
+            self.driver.download(
+                "wasabi-backend",
+                "/home/wasabi/.walletwasabi/backend/",
+                os.path.join(data_path, "wasabi-backend"),
+            )
+            print(f"- stored backend logs")
         except:
             print(f"- could not store backend logs")
+
+        if self.backend_architecture == BackendArchitecture.SPLIT:
+            try:
+                self.driver.download(
+                    "wasabi-coordinator",
+                    "/home/wasabi/.walletwasabi/coordinator/",
+                    os.path.join(data_path, "wasabi-coordinator"),
+                )
+                print(f"- stored coordinator logs")
+            except:
+                print(f"- could not store coordinator logs")
 
     def start_coinjoin(self, client):
         sleep(random.random() / 10)
