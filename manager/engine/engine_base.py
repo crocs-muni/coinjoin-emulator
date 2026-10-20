@@ -2,6 +2,7 @@ from manager.btc_node import BtcNode
 from manager import utils
 from manager.engine.configuration import ScenarioConfig, WalletConfig, FundConfig
 from time import sleep
+from typing import Any
 import random
 import os
 import json
@@ -108,36 +109,29 @@ class EngineBase:
     def start_clients(self, wallets):
         print("Starting clients")
         with multiprocessing.pool.ThreadPool() as pool:
-            new_clients = pool.starmap(self.start_client, enumerate(wallets, start=len(self.clients)))
+            new_clients = pool.starmap(self.start_client, enumerate(wallets))
 
             for _ in range(3):
-                restart_idx = list(
-                    map(
-                        lambda x: x[0],
-                        filter(
-                            lambda x: x[1] is None,
-                            enumerate(new_clients, start=len(self.clients)),
-                        ),
-                    )
-                )
-
-                if not restart_idx:
+                failed = [i for i, client in enumerate(new_clients) if client is None]
+                if not failed:
                     break
-                print(f"- failed to start {len(restart_idx)} clients; retrying ...")
-                for idx in restart_idx:
-                    self.stop_client(idx)
+                print(f"- failed to start {len(failed)} clients; retrying ...")
+                for i in failed:
+                    self.stop_client(i)
                 sleep(60)
                 restarted_clients = pool.starmap(
                     self.start_client,
-                    ((idx, wallets[idx - len(self.clients)]) for idx in restart_idx),
+                    ((i, wallets[i]) for i in failed),
                 )
-                for idx, client in enumerate(restarted_clients):
-                    if client is not None:
-                        new_clients[restart_idx[idx]] = client
-            else:
-                new_clients = list(filter(lambda x: x is not None, new_clients))
-                print(f"- failed to start {len(wallets) - len(new_clients)} clients; continuing ...")
-        self.clients.extend(new_clients)
+                for i, client in zip(failed, restarted_clients):
+                    new_clients[i] = client
+
+        # keep each client paired with its own wallet, so failed clients do not shift the funding
+        started = [(client, wallet) for client, wallet in zip(new_clients, wallets) if client is not None]
+        if len(started) < len(wallets):
+            print(f"- failed to start {len(wallets) - len(started)} clients; continuing ...")
+        self.clients = [client for client, _ in started]
+        return started
 
     def fund_distributor(self, btc_amount):
         print("Funding distributor")
@@ -160,20 +154,20 @@ class EngineBase:
         sleep(random.random() * 3)
         client_path = os.path.join(data_path, client.name)
         os.mkdir(client_path)
-        with open(os.path.join(client_path, "coins.json"), "w") as f:
-            json.dump(client.list_coins(), f, indent=2)
-            print(f"- stored {client.name} coins")
-        with open(os.path.join(client_path, "unspent_coins.json"), "w") as f:
-            json.dump(client.list_unspent_coins(), f, indent=2)
-            print(f"- stored {client.name} unspent coins")
-        with open(os.path.join(client_path, "keys.json"), "w") as f:
-            json.dump(client.list_keys(), f, indent=2)
-            print(f"- stored {client.name} keys")
+        for label, filename, getter in (
+            ("coins", "coins.json", client.list_coins),
+            ("unspent coins", "unspent_coins.json", client.list_unspent_coins),
+            ("keys", "keys.json", client.list_keys),
+            ("history", "history.json", client.get_history),
+        ):
+            try:
+                data = getter()
+                with open(os.path.join(client_path, filename), "w") as f:
+                    json.dump(data, f, indent=2)
+                print(f"- stored {client.name} {label}")
+            except Exception as e:
+                print(f"- could not store {client.name} {label} ({e})")
 
-        with open(os.path.join(client_path, "history.json"), "w") as f:
-            json.dump(client.get_history(), f, indent=2)
-            print(f"- stored {client.name} history")
-            
         try:
             self.driver.download(client.name, self.log_src_path, client_path)
 
@@ -220,20 +214,21 @@ class EngineBase:
     def stop_coinjoins(self):
         print("Stopping coinjoins")
         for client in self.clients:
-            client.stop_coinjoin()
-            print(f"- stopped mixing {client.name}")
+            try:
+                client.stop_coinjoin()
+                print(f"- stopped mixing {client.name}")
+            except Exception as e:
+                print(f"- could not stop mixing {client.name} ({e})")
 
     def update_invoice_payments(self):
         due = list(filter(lambda x: x[0] <= self.current_block and x[1] <= self.current_round, self.invoices.keys()))
         for i in due:
             self.pay_invoices(self.invoices.pop(i, []))
 
-    def prepare_invoices(self, wallets: list[WalletConfig]):
+    def prepare_invoices(self, client_wallets: list[tuple[Any, WalletConfig]]):
         print("Preparing invoices")
-        client_invoices = [(client, wallet.funds) for client, wallet in zip(self.clients, wallets)]
-
-        for client, funds in client_invoices:
-            for fund in funds:
+        for client, wallet in client_wallets:
+            for fund in wallet.funds:
                 block = 0
                 round = 0
                 if isinstance(fund, int):
@@ -288,8 +283,8 @@ class EngineBase:
         self.prepare_images()
         self.start_infrastructure()
         self.fund_distributor(500)
-        self.start_clients(self.scenario.wallets)
-        self.prepare_invoices(self.scenario.wallets)
+        started = self.start_clients(self.scenario.wallets)
+        self.prepare_invoices(started)
         print("Running simulation")
         self.run_engine()
 

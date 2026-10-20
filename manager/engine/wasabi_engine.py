@@ -29,7 +29,7 @@ class WasabiEngine(EngineBase):
         self.backend: WasabiBackendProtocol | None = None
         self.backend_architecture: BackendArchitecture | None = None
         self.round_ids: set[str] = set()
-        super().__init__(args, driver, "/home/wasabi/.walletwasabi/backend/")
+        super().__init__(args, driver, "/home/wasabi/.walletwasabi/client/")
 
     def default_scenario(self) -> ScenarioConfig:
         return ScenarioConfig(
@@ -40,7 +40,7 @@ class WasabiEngine(EngineBase):
             wallets=[
                 WalletConfig(funds=[200000, 50000], wasabi=WasabiConfig(anon_score_target=7)),
                 WalletConfig(funds=[3000000], wasabi=WasabiConfig(redcoin_isolation=True)),
-                WalletConfig(funds=[1000000, 500000], wasabi=WasabiConfig(skip_rounds=[0, 1, 2])),
+                WalletConfig(funds=[1000000, 500000], delay_rounds=3),
                 WalletConfig(funds=[3000000, 15000]),
                 WalletConfig(funds=[1000000, 500000]),
                 WalletConfig(funds=[3000000, 600000]),
@@ -308,33 +308,25 @@ class WasabiEngine(EngineBase):
 
     def store_engine_logs(self, data_path):
         try:
-            if self.backend_architecture == BackendArchitecture.SPLIT:
-                self.driver.download(
-                    "wasabi-backend",
-                    "/home/wasabi/.walletwasabi/backend/",
-                    os.path.join(data_path, "wasabi-backend-2.6"),
-                )
-                print(f"- stored backend-2.6 logs")
-
-                try:
-                    self.driver.download(
-                        "wasabi-coordinator",
-                        "/home/wasabi/.walletwasabi/coordinator/",
-                        os.path.join(data_path, "wasabi-coordinator"),
-                    )
-                    print(f"- stored coordinator logs")
-                except:
-                    print(f"- could not store coordinator logs")
-            else:
-                # Store logs from legacy backend
-                self.driver.download(
-                    "wasabi-backend",
-                    "/home/wasabi/.walletwasabi/backend/",
-                    os.path.join(data_path, "wasabi-backend"),
-                )
-                print(f"- stored backend logs")
+            self.driver.download(
+                "wasabi-backend",
+                "/home/wasabi/.walletwasabi/backend/",
+                os.path.join(data_path, "wasabi-backend"),
+            )
+            print(f"- stored backend logs")
         except:
             print(f"- could not store backend logs")
+
+        if self.backend_architecture == BackendArchitecture.SPLIT:
+            try:
+                self.driver.download(
+                    "wasabi-coordinator",
+                    "/home/wasabi/.walletwasabi/coordinator/",
+                    os.path.join(data_path, "wasabi-coordinator"),
+                )
+                print(f"- stored coordinator logs")
+            except:
+                print(f"- could not store coordinator logs")
 
     def start_coinjoin(self, client):
         sleep(random.random() / 10)
@@ -406,12 +398,12 @@ class WasabiEngine(EngineBase):
     def _get_current_round(self) -> int:
         if self.backend_architecture == BackendArchitecture.SPLIT and self.coordinator is not None:
             resp = self.coordinator._get_status()
-            if resp is not None:
-                for round_state in resp["RoundStates"]:
-                    if round_state["Phase"] == "TransactionSigning":
-                        self.round_ids.add(round_state["RoundId"])
-                return len(self.round_ids)
-            return 0
+            if resp is None:
+                raise RuntimeError("Could not get coordinator status")
+            for round_state in resp["RoundStates"]:
+                if round_state["Phase"] == "TransactionSigning":
+                    self.round_ids.add(round_state["RoundId"])
+            return len(self.round_ids)
 
         else:
             # In legacy versions, rounds are tracked by the backend

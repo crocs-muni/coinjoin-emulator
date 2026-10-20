@@ -5,7 +5,7 @@ if [ -z "$ADDR_BTC_NODE" ]; then
     export ADDR_BTC_NODE="btc-node"
 fi
 if [ -z "$ADDR_WASABI_BACKEND" ]; then
-    export ADDR_WASABI_BACKEND="wasabi-backend-2.6"
+    export ADDR_WASABI_BACKEND="wasabi-backend"
 fi
 if [ -z "$ADDR_WASABI_COORDINATOR" ]; then
     export ADDR_WASABI_COORDINATOR="wasabi-coordinator"

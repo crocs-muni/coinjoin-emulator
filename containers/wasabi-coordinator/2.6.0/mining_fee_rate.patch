@@ -14,7 +14,7 @@ index 2c3c957..d6401a4 100644
  			BitcoinCoreRpcEndPoint = get.Required("BitcoinCoreRpcEndPoint", EndPoint),
  			BitcoinRpcConnectionString = get.Required("BitcoinRpcConnectionString", String),
  			ConfirmationTarget = get.Required("ConfirmationTarget", UInt),
-+			MiningFeeRate = get.Optional("MiningFeeRate", Decimal),
++			MiningFeeRate = get.Optional("MiningFeeRate", Decimal.Map(d => (decimal?) d)),
  			DoSSeverity = get.Required("DoSSeverity", MoneyBitcoins),
  			DoSMinTimeForFailedToVerify = get.Required("DoSMinTimeForFailedToVerify", TimeSpan),
  			DoSMinTimeForCheating = get.Required("DoSMinTimeForCheating", TimeSpan),
